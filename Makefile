@@ -21,6 +21,7 @@ LDGEN ?= $(CC)
 CFLAGS += $(BOARD_CONFIG)
 CFLAGS += -I../plo -I$(PROJECT_PATH)/
 CFLAGS += -DVERSION=\"$(VERSION)\"
+CFLAGS += -O0 -ggdb3
 
 include hal/$(TARGET_SUFF)/Makefile
 include lib/Makefile
