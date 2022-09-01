@@ -52,7 +52,7 @@ static const struct {
 } uartInfo[] = {
 	{ (void *)UART1_BASE, UART1_CLK, UART1_IRQ, pctl_gpioa, 10, 7, pctl_gpioa, 9, 7 },
 	{ (void *)UART2_BASE, UART2_CLK, UART2_IRQ, pctl_gpiod, 6, 7, pctl_gpiod, 5, 7 },
-	{ (void *)UART3_BASE, UART3_CLK, UART3_IRQ, pctl_gpioc, 11, 7, pctl_gpioc, 10, 7 },
+	{ (void *)UART3_BASE, UART3_CLK, UART3_IRQ, pctl_gpiod, 9, 7, pctl_gpiod, 8, 7 },
 	{ (void *)UART4_BASE, UART4_CLK, UART4_IRQ, pctl_gpioc, 11, 8, pctl_gpioc, 10, 8 },
 	{ (void *)UART5_BASE, UART5_CLK, UART5_IRQ, pctl_gpiod, 2, 8, pctl_gpioc, 12, 8 },
 };
