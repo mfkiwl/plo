@@ -112,8 +112,13 @@ static ssize_t uart_read(unsigned int minor, addr_t offs, void *buff, size_t len
 			hal_interruptsEnable();
 			start = hal_timerGet();
 			while (!uart->rxflag) {
-				if ((hal_timerGet() - start) >= timeout)
-					return -ETIME;
+				if ((hal_timerGet() - start) >= timeout) {
+					/* no error if we read less bytes than len */
+					if (cnt < (len - 1))
+						break;
+					else
+						return -ETIME;
+				}
 			}
 			hal_interruptsDisable();
 		}
