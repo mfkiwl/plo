@@ -21,11 +21,17 @@
 #include <hal/hal.h>
 
 
+#ifdef __sparc__
+typedef void *va_list;
+#define va_start(ap, parmN) __builtin_va_start(ap, parmN)
+#define va_arg(ap, type)    __builtin_va_arg(ap, type)
+#define va_end(ap)          __builtin_va_end(ap)
+#else
 typedef u8 *va_list;
-
 #define va_start(ap, parmN) ((void)((ap) = (va_list)((char *)(&parmN) + sizeof(parmN))))
-#define va_arg(ap, type)    (*(type *)(((*(u8 **)&(ap)) += sizeof(type)) - (sizeof(type))))
-#define va_end(ap)          ((void)0)
+#define va_arg(ap, type) (*(type *)(((*(u8 **)&(ap)) += sizeof(type)) - (sizeof(type))))
+#define va_end(ap)       ((void)0)
+#endif
 
 
 #endif
