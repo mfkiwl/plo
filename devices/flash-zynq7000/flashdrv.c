@@ -588,7 +588,9 @@ static int flashdrv_init(unsigned int minor)
 			return -EINVAL;
 	}
 
-	lib_printf("\ndev/flash: Initializing flash(%d.%d)", DEV_STORAGE, minor);
+	lib_printf("\ndev/flash: Configured %s %dMB nor flash(%d.%d)", info->name, CFI_SIZE_FLASH(info->cfi.chipSize) >> 20u, DEV_STORAGE, minor);
+	lib_printf("\ndev/flash: MAX_TIMEOUT_ERASE %dms\nMAX_PROGRAM %dms\nMAX_TIMEOUT_CHIP_ERASE %dms\nSECTOR_SIZE 0%dB\nSECTOR_SIZE 1%dB\nSECTOR_SIZE 2%dB\nSECTOR_SIZE 3%dB\n", CFI_TIMEOUT_MAX_ERASE(info->cfi.timeoutTypical.sectorErase, info->cfi.timeoutMax.sectorErase), CFI_TIMEOUT_MAX_PROGRAM(info->cfi.timeoutTypical.pageWrite, info->cfi.timeoutMax.pageWrite), CFI_TIMEOUT_MAX_ERASE(info->cfi.timeoutTypical.chipErase, info->cfi.timeoutMax.chipErase), CFI_SIZE_SECTION(info->cfi.regs[0].size), CFI_SIZE_SECTION(info->cfi.regs[1].size), CFI_SIZE_SECTION(info->cfi.regs[2].size), CFI_SIZE_SECTION(info->cfi.regs[3].size));
+	lib_printf("\ndev/flash: TYPICAL_TIMEOUT_ERASE %dms\nTYPICAL_PROGRAM %dus\nTYPICAL_TIMEOUT_CHIP_ERASE %dms\n", 1<<info->cfi.timeoutTypical.sectorErase, 1<<info->cfi.timeoutTypical.pageWrite, 1<<info->cfi.timeoutTypical.chipErase);
 
 	return EOK;
 }

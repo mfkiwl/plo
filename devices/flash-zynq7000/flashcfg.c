@@ -184,7 +184,7 @@ static void flashcfg_micron(flash_info_t *info)
 	info->cfi.timeoutMax.pageWrite = 0x2;
 	info->cfi.timeoutMax.sectorErase = 0x3;
 	info->cfi.timeoutMax.chipErase = 0x3;
-	info->cfi.chipSize = 0x18;
+	info->cfi.chipSize = 0x17;
 	info->cfi.fdiDesc = 0x0102;
 	info->cfi.pageSize = 0x08;
 	info->cfi.regsCount = 1;
@@ -216,7 +216,7 @@ static void flashcfg_winbond(flash_info_t *info)
 	info->cfi.timeoutMax.pageWrite = 0x2;
 	info->cfi.timeoutMax.sectorErase = 0x3;
 	info->cfi.timeoutMax.chipErase = 0x3;
-	info->cfi.chipSize = 0x18;
+	info->cfi.chipSize = 0x17;
 	info->cfi.fdiDesc = 0x0102;
 	info->cfi.pageSize = 0x08;
 	info->cfi.regsCount = 1;
