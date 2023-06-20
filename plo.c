@@ -35,6 +35,7 @@ int main(void)
 
 	lib_printf(CONSOLE_BOLD "Phoenix-RTOS loader v. " VERSION CONSOLE_NORMAL);
 	lib_printf(CONSOLE_CURSOR_HIDE CONSOLE_MAGENTA "\nhal: %s", hal_cpuInfo());
+	lib_printf("\n64 bit TEST %llu %lld %llx\n", 0, 0, 0);
 	devs_init();
 	cmd_run();
 
