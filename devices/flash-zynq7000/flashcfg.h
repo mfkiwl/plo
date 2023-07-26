@@ -98,10 +98,11 @@ typedef struct {
 	u8 opCode;
 	u8 size;
 	u8 dummyCyc;
+	u8 dataLines;
 } flash_cmd_t;
 
 
-typedef struct {
+typedef struct flash_info {
 	flash_cfi_t cfi;
 	flash_cmd_t cmds[flash_cmd_end];
 
