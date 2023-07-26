@@ -111,6 +111,8 @@ typedef struct flash_info {
 	int readCmd;                    /* Default read command define for specific flash memory */
 	int ppCmd;                      /* Default page program command define for specific flash memory */
 	const char *name;
+
+	int (*init)(const struct flash_info *info);
 } flash_info_t;
 
 

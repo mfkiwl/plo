@@ -487,7 +487,7 @@ static ssize_t flashdrv_erase(unsigned int minor, addr_t addr, size_t len, unsig
 	/* Chips erase */
 	if (len == (size_t)-1) {
 		len = CFI_SIZE_FLASH(cfi->chipSize);
-		lib_printf("\nErasing all data from flash device ...");
+		log_info("\nErasing all data from flash device ...");
 		res = flashdrv_chipErase();
 		if (res < 0) {
 			return res;
@@ -527,7 +527,7 @@ static ssize_t flashdrv_erase(unsigned int minor, addr_t addr, size_t len, unsig
 	addr &= ~addr_mask;
 
 
-	lib_printf("\nErasing sectors from 0x%x to 0x%x ...", addr, end);
+	log_info("\nErasing sectors from 0x%x to 0x%x ...", addr, end);
 
 	len = 0;
 	while (addr < end) {
@@ -612,6 +612,13 @@ static int flashdrv_init(unsigned int minor)
 	for (i = 0; i < info->cfi.regsCount; ++i) {
 		if (CFI_SIZE_SECTION(info->cfi.regs[i].size) > SIZE_OCRAM_HIGH) {
 			return -EINVAL;
+		}
+	}
+
+	if (info->init != NULL) {
+		res = info->init(info);
+		if (res < 0) {
+			return res;
 		}
 	}
 

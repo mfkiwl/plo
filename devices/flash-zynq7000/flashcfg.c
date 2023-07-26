@@ -47,7 +47,11 @@
 #define FLASH_CMD_4SE        0xdc /* 4-byte 64KB sector erase*/
 #define FLASH_CMD_BE         0x60 /* Chip erase */
 
+#define FLASH_TIMEOUT_CMD_MS 1000
+#define FLASH_TIMEOUT_WIP_MS 1000
 
+
+/* dummyCyc == -1, means that it has to be set for each memory separately */
 static const flash_cmd_t flash_defCmds[flash_cmd_end] = {
 	{ FLASH_CMD_RDID, 1, 24, 1 },
 	{ FLASH_CMD_RDSR1, 1, 8, 1 },
@@ -55,16 +59,16 @@ static const flash_cmd_t flash_defCmds[flash_cmd_end] = {
 	{ FLASH_CMD_WREN, 1, 0, 1 },
 	{ FLASH_CMD_READ, 4, 0, 1 },
 	{ FLASH_CMD_4READ, 5, 0, 1 },
-	{ FLASH_CMD_FAST_READ, 4, 8, 1 },
-	{ FLASH_CMD_4FAST_READ, 5, 8, 1 },
-	{ FLASH_CMD_DOR, 4, 4, 2 },
-	{ FLASH_CMD_4DOR, 5, 8, 2 },
-	{ FLASH_CMD_QOR, 4, 2, 4 },
-	{ FLASH_CMD_4QOR, 5, 2, 4 },
-	{ FLASH_CMD_DIOR, 4, 4, 2 },
-	{ FLASH_CMD_4DIOR, 5, 4, 2 },
-	{ FLASH_CMD_QIOR, 4, 6, 4 },
-	{ FLASH_CMD_4QIOR, 5, 6, 4 },
+	{ FLASH_CMD_FAST_READ, 4, -1, 1 },
+	{ FLASH_CMD_4FAST_READ, 5, -1, 1 },
+	{ FLASH_CMD_DOR, 4, -1, 2 },
+	{ FLASH_CMD_4DOR, 5, -1, 2 },
+	{ FLASH_CMD_QOR, 4, -1, 4 },
+	{ FLASH_CMD_4QOR, 5, -1, 4 },
+	{ FLASH_CMD_DIOR, 4, -1, 2 },
+	{ FLASH_CMD_4DIOR, 5, -1, 2 },
+	{ FLASH_CMD_QIOR, 4, -1, 4 },
+	{ FLASH_CMD_4QIOR, 5, -1, 4 },
 	{ FLASH_CMD_PP, 4, 0, 1 },
 	{ FLASH_CMD_4PP, 5, 0, 1 },
 	{ FLASH_CMD_QPP, 4, 0, 4 },
@@ -77,15 +81,236 @@ static const flash_cmd_t flash_defCmds[flash_cmd_end] = {
 };
 
 
+static int flashcfg_wren(const flash_info_t *info)
+{
+	int res;
+	flash_cmd_t cmd;
+	u8 tx[3];
+
+	/* Write enable */
+	cmd = info->cmds[flash_cmd_wren];
+	if (cmd.size > sizeof(tx)) {
+		return -EINVAL;
+	}
+
+	hal_memset(tx, 0, cmd.size);
+	tx[0] = cmd.opCode;
+
+	qspi_start();
+	res = qspi_polledTransfer(tx, NULL, cmd.size, FLASH_TIMEOUT_CMD_MS);
+	qspi_stop();
+
+	return res;
+}
+
+
+static int flashcfg_statusRegGet(const flash_info_t *info, u8 *val)
+{
+	int res;
+	size_t cmdSz;
+	const flash_cmd_t cmd = info->cmds[flash_cmd_rdsr1];
+	u8 rx[2] = { 0, 0 };
+	u8 tx[2] = { 0, 0 };
+
+	cmdSz = cmd.size + (cmd.dummyCyc * cmd.dataLines) / 8;
+	if (cmdSz != 2) {
+		return -EINVAL;
+	}
+
+	qspi_start();
+	tx[0] = cmd.opCode;
+	res = qspi_polledTransfer(tx, rx, 2, FLASH_TIMEOUT_CMD_MS);
+	qspi_stop();
+
+	*val = rx[1];
+
+	return res;
+}
+
+
+static int flashcfg_wipCheck(const flash_info_t *info, time_t timeout)
+{
+	int res;
+	u8 st;
+	const time_t stop = hal_timerGet() + timeout;
+
+	do {
+		res = flashcfg_statusRegGet(info, &st);
+		if (res < 0) {
+			return res;
+		}
+
+		if (hal_timerGet() >= stop) {
+			return -ETIME;
+		}
+	} while ((st & 0x1) != 0);
+
+	return EOK;
+}
+
+
+static int flashcfg_spansionInit(const flash_info_t *info)
+{
+	int res;
+	u8 tx[3];
+
+	res = flashcfg_wren(info);
+	if (res < 0) {
+		return res;
+	}
+
+	/* Write registers */
+
+	/* Write registers cmd code */
+	tx[0] = 0x1;
+
+	/* SR */
+	/* Leave SR in default state */
+	tx[1] = 0;
+
+	/* CR */
+	/* Set latency code to 10b to support 100 MHz */
+	/* Other values are set as in default config (0) */
+	tx[2] = (2 << 6);
+	/* Enable quad mode if needed. */
+	if ((info->cmds[info->readCmd].dataLines == 4) || (info->cmds[info->ppCmd].dataLines == 4)) {
+		tx[2] = (1 << 1);
+	}
+
+	qspi_start();
+	res = qspi_polledTransfer(tx, NULL, 3, FLASH_TIMEOUT_CMD_MS);
+	qspi_stop();
+
+	if (res < 0) {
+		return res;
+	}
+
+	return flashcfg_wipCheck(info, FLASH_TIMEOUT_WIP_MS);
+}
+
+
 static void flashcfg_spansion(flash_info_t *info)
 {
 	info->name = "Spansion s25fl256s1";
 	hal_memcpy(info->cmds, flash_defCmds, sizeof(flash_defCmds));
 
-	/* FIXME: s25fl256s1 should be able to operate in quad and dual mode for 4byte transactions.
-			  In the current implementation errors occur for the dual and the quad mode. */
+	/* Specific configuration */
+	/* Dummy cycles chosen for 100MHz clock speed. Latency Code 10b. */
+	/* Dummy cycles * data lines must be divisible by 8. */
+
+	/* Single line */
+	info->cmds[flash_cmd_fast_read].dummyCyc = 8;
+	info->cmds[flash_cmd_4fast_read].dummyCyc = 8;
+	/* Two lines */
+	info->cmds[flash_cmd_dor].dummyCyc = 8;
+	info->cmds[flash_cmd_4dor].dummyCyc = 8;
+	/* Not supported, requires 6 dummy cycles, 6 * 2 = 12 which is not divisible by 8. */
+	info->cmds[flash_cmd_dior].dummyCyc = -1;
+	info->cmds[flash_cmd_4dior].dummyCyc = -1;
+	/* Four lines */
+	info->cmds[flash_cmd_qor].dummyCyc = 8;
+	info->cmds[flash_cmd_4qor].dummyCyc = 8;
+	/* Not supported, requires 5 cycles and 2 mode bits, (5 + 2) * 4 = 28 which is not divisible by 8. */
+	info->cmds[flash_cmd_qior].dummyCyc = -1;
+	info->cmds[flash_cmd_4qior].dummyCyc = -1;
+
+	/* FIXME:  s25fl256s1 should be able to operate in quad and dual mode for 4byte transactions.
+			   In the current implementation errors occur for the dual and the quad mode.
+			   Zedboard's QSPI controller doesn't officially support 4byte addressing.
+			   Due to this fact quad / dual mode with 4 byte addressing maybe impossible. */
 	info->readCmd = flash_cmd_4fast_read;
 	info->ppCmd = flash_cmd_4pp;
+
+	info->init = flashcfg_spansionInit;
+}
+
+
+static int flashcfg_micronInitVolatileCRWriteEnable(const flash_info_t *info, int enable)
+{
+	int res;
+	u8 tx[3];
+
+	res = flashcfg_wren(info);
+	if (res < 0) {
+		return res;
+	}
+
+	/* Enable non-volatile CR write */
+	hal_memset(tx, 0, sizeof(tx));
+	/* non-volatile CR write cmd code */
+	tx[0] = 0xb1;
+
+	/* Output driver strength 30 Ohms, TODO optimize */
+	/* Enable hold, disable Quad I/O and Dual I/O protocols */
+	/* Enable write on non-volatile register */
+	tx[1] = 0xfe;
+	if (enable == 0) {
+		tx[1] |= 1;
+	}
+
+	/* Set default value for number of dummy clock cycles */
+	/* Disable XIP */
+	tx[2] = 0xff;
+
+	qspi_start();
+	res = qspi_polledTransfer(tx, NULL, 3, FLASH_TIMEOUT_CMD_MS);
+	qspi_stop();
+
+	if (res < 0) {
+		return res;
+	}
+
+	return flashcfg_wipCheck(info, FLASH_TIMEOUT_WIP_MS);
+}
+
+
+static int flashcfg_micronInitVolatileCRSetDummyCyc(const flash_info_t *info)
+{
+	int res;
+	u8 tx[2];
+
+	if ((info->cmds[info->readCmd].dummyCyc - 1) > 0xf) {
+		return -EINVAL;
+	}
+
+	/* Volatile CR write cmd code */
+	tx[0] = 0x81;
+
+	/* Set number of dummy cycles */
+	tx[1] = ((info->cmds[info->readCmd].dummyCyc - 1) << 4);
+	/* Disable XIP, continuous read */
+	tx[1] |= 0xb;
+
+	qspi_start();
+	res = qspi_polledTransfer(tx, NULL, 2, FLASH_TIMEOUT_CMD_MS);
+	qspi_stop();
+
+	if (res < 0) {
+		return res;
+	}
+
+	return flashcfg_wipCheck(info, FLASH_TIMEOUT_WIP_MS);
+}
+
+
+static int flashcfg_micronInit(const flash_info_t *info)
+{
+	int res;
+
+	res = flashcfg_micronInitVolatileCRWriteEnable(info, 1);
+	if (res < 0) {
+		return res;
+	}
+	res = flashcfg_micronInitVolatileCRSetDummyCyc(info);
+	if (res < 0) {
+		return res;
+	}
+	res = flashcfg_micronInitVolatileCRWriteEnable(info, 0);
+	if (res < 0) {
+		return res;
+	}
+
+	return 0;
 }
 
 
@@ -112,12 +337,81 @@ static void flashcfg_micron(flash_info_t *info)
 	hal_memcpy(info->cmds, flash_defCmds, sizeof(flash_defCmds));
 
 	/* Specific configuration */
-	info->cmds[flash_cmd_dior].dummyCyc = 6;
+	/* Dummy cycles chosen for 100MHz clock speed. */
+	/* Dummy cycles * data lines must be divisible by 8. */
+
+	/* Single line */
+	info->cmds[flash_cmd_fast_read].dummyCyc = 8;
+	info->cmds[flash_cmd_4fast_read].dummyCyc = 8;
+	/* Two lines */
+	info->cmds[flash_cmd_dor].dummyCyc = 4;
+	info->cmds[flash_cmd_4dor].dummyCyc = 4;
+	info->cmds[flash_cmd_dior].dummyCyc = 8;
+	info->cmds[flash_cmd_4dior].dummyCyc = 8;
+	/* Four lines */
+	info->cmds[flash_cmd_qor].dummyCyc = 6;
+	info->cmds[flash_cmd_4qor].dummyCyc = 6;
 	info->cmds[flash_cmd_qior].dummyCyc = 10;
+	info->cmds[flash_cmd_4qior].dummyCyc = 10;
 
 	/* Default read and page program commands */
 	info->readCmd = flash_cmd_qior;
 	info->ppCmd = flash_cmd_qpp;
+
+	info->init = flashcfg_micronInit;
+}
+
+
+static int flashcfg_winbondVolatileSRWriteEnable(const flash_info_t *info)
+{
+	int res;
+	u8 tx[2] = { 0x50, 0 };
+
+	qspi_start();
+	res = qspi_polledTransfer(tx, NULL, 2, FLASH_TIMEOUT_CMD_MS);
+	qspi_stop();
+
+	return res;
+}
+
+
+static int flashcfg_winbondInit(const flash_info_t *info)
+{
+	int res;
+	u8 tx[4];
+
+	res = flashcfg_winbondVolatileSRWriteEnable(info);
+	if (res < 0) {
+		return res;
+	}
+
+	/* Write volatile status registers */
+
+	/* Write status registers cmd code */
+	tx[0] = 0x1;
+
+	/* SR */
+	/* Ensure SR is protected by software */
+	/* Do not enable any protection. */
+	tx[1] = 0;
+	tx[2] = 0;
+	/* Enable quad mode if needed. */
+	if ((info->cmds[info->readCmd].dataLines == 4) || (info->cmds[info->ppCmd].dataLines == 4)) {
+		tx[2] = (1 << 1);
+	}
+	/* Set output the driver strength to 25% (default value in the docs). */
+	/* TODO: optimize */
+	tx[3] = (3 << 5);
+
+	qspi_start();
+	res = qspi_polledTransfer(tx, NULL, 4, FLASH_TIMEOUT_CMD_MS);
+	qspi_stop();
+
+	if (res < 0) {
+		return res;
+	}
+
+	return flashcfg_wipCheck(info, FLASH_TIMEOUT_WIP_MS);
 }
 
 
@@ -143,10 +437,27 @@ static void flashcfg_winbond(flash_info_t *info)
 
 	hal_memcpy(info->cmds, flash_defCmds, sizeof(flash_defCmds));
 
+	/* 4 byte address commands are not supported on winbound chip. */
+	/* Single line */
+	info->cmds[flash_cmd_fast_read].dummyCyc = 8;
+	info->cmds[flash_cmd_4fast_read].dummyCyc = -1;
+	/* Two lines */
+	info->cmds[flash_cmd_dor].dummyCyc = 8;
+	info->cmds[flash_cmd_4dor].dummyCyc = -1;
+
+	/* It requires mode byte with specific value which is not supported by this driver. */
+	info->cmds[flash_cmd_dior].dummyCyc = -1;
+	info->cmds[flash_cmd_4dior].dummyCyc = -1;
+	/* Four lines */
+	info->cmds[flash_cmd_qor].dummyCyc = 8;
+	info->cmds[flash_cmd_4qor].dummyCyc = -1;
 	info->cmds[flash_cmd_qior].dummyCyc = 4;
+	info->cmds[flash_cmd_4qior].dummyCyc = -1;
 
 	info->readCmd = flash_cmd_qior;
 	info->ppCmd = flash_cmd_qpp;
+
+	info->init = flashcfg_winbondInit;
 }
 
 
