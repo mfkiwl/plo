@@ -307,118 +307,72 @@ __attribute__((section(".noxip"))) static int flexspi_checkFlags(flexspi_t *fspi
 __attribute__((section(".noxip"))) static ssize_t flexspi_opRead(flexspi_t *fspi, time_t start, struct xferOp *xfer)
 {
 	int res;
-	size_t ofs, len = xfer->data.read.sz, size = xfer->data.read.sz & ~7;
-	u8 *buf = xfer->data.read.ptr;
+	u8 *ptr = xfer->data.read.ptr;
+	u8 *end = ptr + xfer->data.read.sz;
 
-	/* note: FlexSPI FIFO watermark level is 64bit aligned */
-	for (ofs = 0; ofs < size; ofs += 8, buf += 8, len -= 8) {
+	while (ptr != end) {
+		volatile u8 *rfdr = (volatile u8 *)(fspi->base + rfdr32); /* 2x */
+
 		/* Wait for rx FIFO available */
-		while ((*(fspi->base + intr) & (1 << 5)) == 0) {
+		while ((*(fspi->base + intr) & (1u << 5u)) == 0u) {
 			res = flexspi_checkFlags(fspi);
 			if (res != EOK) {
 				return res;
 			}
-			else if (xfer->timeout > 0 && (hal_timerGet() - start) >= xfer->timeout) {
+			else if ((xfer->timeout > 0uLL) && ((hal_timerGet() - start) >= xfer->timeout)) {
 				return -ETIME;
 			}
 		}
 
-		((u32 *)buf)[0] = (fspi->base + rfdr32)[0];
-		((u32 *)buf)[1] = (fspi->base + rfdr32)[1];
-
-		/* Move FIFO pointer to watermark level */
-		*(fspi->base + intr) |= 1 << 5;
-	}
-
-	if (ofs < xfer->data.read.sz) {
-		/* Wait for rx FIFO available */
-		while ((*(fspi->base + intr) & (1 << 5)) == 0) {
-			res = flexspi_checkFlags(fspi);
-			if (res != EOK) {
-				return res;
-			}
-			else if (xfer->timeout > 0 && (hal_timerGet() - start) >= xfer->timeout) {
-				return -ETIME;
-			}
+		/* FlexSPI FIFO watermark level is 64bit aligned */
+		for (size_t n = sizeof(u64); (n != 0u) && (ptr != end); --n) {
+			*(ptr++) = *(rfdr++);
 		}
 
-		for (ofs = rfdr32; len > 0; ++ofs) {
-			u32 tmp = *(fspi->base + ofs); /* is volatile! */
-			size = len < sizeof(tmp) ? len : sizeof(tmp);
-			hal_memcpy(buf, &tmp, size);
-			len -= size;
-			buf += size;
-		}
 		/* Move FIFO pointer to watermark level */
-		*(fspi->base + intr) |= 1 << 5;
-	}
-
-	/* FIXME: delay of ~27us */
-	for (u32 i = 0x10000; i > 0; --i) {
-		asm volatile("nop");
+		*(fspi->base + intr) |= 1u << 5u;
 	}
 
 	/* Reset rx FIFO */
-	*(fspi->base + iprxfcr) |= 1;
+	*(fspi->base + iprxfcr) |= 1u;
 
-	return buf - (u8 *)xfer->data.read.ptr;
+	return xfer->data.read.sz;
 }
 
 
 __attribute__((section(".noxip"))) static ssize_t flexspi_opWrite(flexspi_t *fspi, time_t start, struct xferOp *xfer)
 {
 	int res;
-	size_t ofs, len = xfer->data.write.sz, size = xfer->data.write.sz & ~7;
-	const u8 *buf = xfer->data.write.ptr;
+	const u8 *ptr = xfer->data.write.ptr;
+	const u8 *end = ptr + xfer->data.write.sz;
 
-	/* note: FlexSPI FIFO watermark level is 64bit aligned */
-	for (ofs = 0; ofs < size; ofs += 8, buf += 8, len -= 8) {
+	while (ptr != end) {
+		volatile u8 *tfdr = (volatile u8 *)(fspi->base + tfdr32); /* 2x */
+
 		/* Wait for tx FIFO available */
-		while ((*(fspi->base + intr) & (1 << 6)) == 0) {
+		while ((*(fspi->base + intr) & (1u << 6u)) == 0u) {
 			res = flexspi_checkFlags(fspi);
 			if (res != EOK) {
 				return res;
 			}
-			else if (xfer->timeout > 0 && (hal_timerGet() - start) >= xfer->timeout) {
+			else if ((xfer->timeout > 0uLL) && ((hal_timerGet() - start) >= xfer->timeout)) {
 				return -ETIME;
 			}
 		}
 
-		(fspi->base + tfdr32)[0] = ((u32 *)buf)[0];
-		(fspi->base + tfdr32)[1] = ((u32 *)buf)[1];
+		/* FlexSPI FIFO watermark level is 64bit aligned */
+		for (size_t n = sizeof(u64); (n != 0u) && (ptr != end); --n) {
+			*(tfdr++) = *(ptr++);
+		}
 
 		/* Move tx FIFO pointer to watermark level */
-		*(fspi->base + intr) |= 1 << 6;
-	}
-
-	if (ofs < xfer->data.write.sz) {
-		/* Wait for tx FIFO available */
-		while ((*(fspi->base + intr) & (1 << 6)) == 0) {
-			res = flexspi_checkFlags(fspi);
-			if (res != EOK) {
-				return res;
-			}
-			else if (xfer->timeout > 0 && (hal_timerGet() - start) >= xfer->timeout) {
-				return -ETIME;
-			}
-		}
-
-		for (ofs = tfdr32; len > 0; ++ofs) {
-			u32 tmp;
-			size = len < sizeof(tmp) ? len : sizeof(tmp);
-			hal_memcpy(&tmp, buf, size);
-			*(fspi->base + ofs) = tmp;
-			len -= size;
-			buf += size;
-		}
-		/* Move FIFO pointer to watermark level */
-		*(fspi->base + intr) |= 1 << 6;
+		*(fspi->base + intr) |= 1u << 6u;
 	}
 
 	/* Reset tx FIFO */
-	*(fspi->base + iptxfcr) |= 1;
+	*(fspi->base + iptxfcr) |= 1u;
 
-	return buf - (u8 *)xfer->data.write.ptr;
+	return xfer->data.write.sz;
 }
 
 
