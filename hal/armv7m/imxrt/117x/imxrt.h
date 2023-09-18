@@ -320,6 +320,336 @@ enum { cti0_err_irq = 17 + 16, cti1_err_irq, core_irq, lpuart1_irq, lpuart2_irq,
 	xecc_flexspi1_fatal_irq, xecc_flexspi2_irq, xecc_flexspi2_fatal_irq, xecc_semc_irq, xecc_semc_fatal_irq, enet_qos_irq,
 	enet_pmt_irq };
 
+
+/* Clock roots */
+enum { clkroot_m7 = 0, clkroot_m4, clkroot_bus, clkroot_bus_lpsr, clkroot_semc, clkroot_cssys, clkroot_cstrace, clkroot_m4_systick,
+	clkroot_m7_systick, clkroot_adc1, clkroot_adc2, clkroot_acmp, clkroot_flexio1, clkroot_flexio2, clkroot_gpt1, clkroot_gpt2,
+	clkroot_gpt3, clkroot_gpt4, clkroot_gpt5, clkroot_gpt6, clkroot_flexspi1, clkroot_flexspi2, clkroot_can1, clkroot_can2,
+	clkroot_can3, clkroot_lpuart1, clkroot_lpuart2, clkroot_lpuart3, clkroot_lpuart4, clkroot_lpuart5, clkroot_lpuart6, clkroot_lpuart7,
+	clkroot_lpuart8, clkroot_lpuart9, clkroot_lpuart10, clkroot_lpuart11, clkroot_lpuart12, clkroot_lpi2c1, clkroot_lpi2c2, clkroot_lpi2c3,
+	clkroot_lpi2c4, clkroot_lpi2c5, clkroot_lpi2c6, clkroot_lpspi1, clkroot_lpspi2, clkroot_lpspi3, clkroot_lpspi4, clkroot_lpspi5,
+	clkroot_lpspi6, clkroot_emv1, clkroot_emv2, clkroot_enet1, clkroot_enet2, clkroot_enet_qos, clkroot_enet_25m, clkroot_enet_timer1,
+	clkroot_enet_timer2, clkroot_enet_timer3, clkroot_usdhc1, clkroot_usdhc2, clkroot_asrc, clkroot_mqs, clkroot_mic, clkroot_spdif,
+	clkroot_sai1, clkroot_sai2, clkroot_sai3, clkroot_sai4, clkroot_gc355, clkroot_lcdif, clkroot_lcdifv2, clkroot_mipi_ref,
+	clkroot_mipi_esc, clkroot_csi2, clkroot_csi2_esc, clkroot_csi2_ui, clkroot_csi, clkroot_cko1, clkroot_cko2};
+
+
+/* Mux selector: M7 */
+enum { mux_clkroot_m7_oscrc48mdiv2 = 0, mux_clkroot_m7_osc24mout, mux_clkroot_m7_oscrc400m, mux_clkroot_m7_oscrc16m,
+	mux_clkroot_m7_armpllout, mux_clkroot_m7_syspll1out, mux_clkroot_m7_syspll3out, mux_clkroot_m7_videopllout };
+
+/* Mux selector: M4 */
+enum { mux_clkroot_m4_oscrc48mdiv2 = 0, mux_clkroot_m4_osc24mout, mux_clkroot_m4_oscrc400m, mux_clkroot_m4_oscrc16m,
+	mux_clkroot_m4_syspll3pfd3, mux_clkroot_m4_syspll3out, mux_clkroot_m4_syspll2out, mux_clkroot_m4_syspll1div5 };
+
+/* Mux selector: BUS */
+enum { mux_clkroot_bus_oscrc48mdiv2 = 0, mux_clkroot_bus_osc24mout, mux_clkroot_bus_oscrc400m, mux_clkroot_bus_oscrc16m,
+	mux_clkroot_bus_syspll3out, mux_clkroot_bus_syspll1div5, mux_clkroot_bus_syspll2out, mux_clkroot_bus_syspll2pfd3 };
+
+/* Mux selector: BUS_LPSR */
+enum { mux_clkroot_bus_lpsr_oscrc48mdiv2 = 0, mux_clkroot_bus_lpsr_osc24mout, mux_clkroot_bus_lpsr_oscrc400m, mux_clkroot_bus_lpsr_oscrc16m,
+	mux_clkroot_bus_lpsr_syspll3pfd3, mux_clkroot_bus_lpsr_syspll3out, mux_clkroot_bus_lpsr_syspll2out, mux_clkroot_bus_lpsr_syspll1div5 };
+
+/* Mux selector: SEMC */
+enum { mux_clkroot_semc_oscrc48mdiv2 = 0, mux_clkroot_semc_osc24mout, mux_clkroot_semc_oscrc400m, mux_clkroot_semc_oscrc16m,
+	mux_clkroot_semc_syspll1div5, mux_clkroot_semc_syspll2out, mux_clkroot_semc_syspll2pfd1, mux_clkroot_semc_syspll3pfd0 };
+
+/* Mux selector: CSSYS */
+enum { mux_clkroot_cssys_oscrc48mdiv2 = 0, mux_clkroot_cssys_osc24mout, mux_clkroot_cssys_oscrc400m, mux_clkroot_cssys_oscrc16m,
+	mux_clkroot_cssys_syspll3div2, mux_clkroot_cssys_syspll1div5, mux_clkroot_cssys_syspll2out, mux_clkroot_cssys_syspll2pfd3 };
+
+/* Mux selector: CSTRACE */
+enum { mux_clkroot_cstrace_oscrc48mdiv2 = 0, mux_clkroot_cstrace_osc24mout, mux_clkroot_cstrace_oscrc400m, mux_clkroot_cstrace_oscrc16m,
+	mux_clkroot_cstrace_syspll3div2, mux_clkroot_cstrace_syspll1div5, mux_clkroot_cstrace_syspll2pfd1, mux_clkroot_cstrace_syspll2out };
+
+/* Mux selector: M4_SYSTICK */
+enum { mux_clkroot_m4_systick_oscrc48mdiv2 = 0, mux_clkroot_m4_systick_osc24mout, mux_clkroot_m4_systick_oscrc400m, mux_clkroot_m4_systick_oscrc16m,
+	mux_clkroot_m4_systick_syspll3pfd3, mux_clkroot_m4_systick_syspll3out, mux_clkroot_m4_systick_syspll2pfd0, mux_clkroot_m4_systick_syspll1div5 };
+
+/* Mux selector: M7_SYSTICK */
+enum { mux_clkroot_m7_systick_oscrc48mdiv2 = 0, mux_clkroot_m7_systick_osc24mout, mux_clkroot_m7_systick_oscrc400m, mux_clkroot_m7_systick_oscrc16m,
+	mux_clkroot_m7_systick_syspll2out, mux_clkroot_m7_systick_syspll3div2, mux_clkroot_m7_systick_syspll1div5, mux_clkroot_m7_systick_syspll2pfd0 };
+
+/* Mux selector: ADC1 */
+enum { mux_clkroot_adc1_oscrc48mdiv2 = 0, mux_clkroot_adc1_osc24mout, mux_clkroot_adc1_oscrc400m, mux_clkroot_adc1_oscrc16m,
+	mux_clkroot_adc1_syspll3div2, mux_clkroot_adc1_syspll1div5, mux_clkroot_adc1_syspll2out, mux_clkroot_adc1_syspll2pfd3 };
+
+/* Mux selector: ADC2 */
+enum { mux_clkroot_adc2_oscrc48mdiv2 = 0, mux_clkroot_adc2_osc24mout, mux_clkroot_adc2_oscrc400m, mux_clkroot_adc2_oscrc16m,
+	mux_clkroot_adc2_syspll3div2, mux_clkroot_adc2_syspll1div5, mux_clkroot_adc2_syspll2out, mux_clkroot_adc2_syspll2pfd3 };
+
+/* Mux selector: ACMP */
+enum { mux_clkroot_acmp_oscrc48mdiv2 = 0, mux_clkroot_acmp_osc24mout, mux_clkroot_acmp_oscrc400m, mux_clkroot_acmp_oscrc16m,
+	mux_clkroot_acmp_syspll3out, mux_clkroot_acmp_syspll1div5, mux_clkroot_acmp_audiopllout, mux_clkroot_acmp_syspll2pfd3 };
+
+/* Mux selector: FLEXIO1 */
+enum { mux_clkroot_flexio1_oscrc48mdiv2 = 0, mux_clkroot_flexio1_osc24mout, mux_clkroot_flexio1_oscrc400m, mux_clkroot_flexio1_oscrc16m,
+	mux_clkroot_flexio1_syspll3div2, mux_clkroot_flexio1_syspll1div5, mux_clkroot_flexio1_syspll2out, mux_clkroot_flexio1_syspll2pfd3 };
+
+/* Mux selector: FLEXIO2 */
+enum { mux_clkroot_flexio2_oscrc48mdiv2 = 0, mux_clkroot_flexio2_osc24mout, mux_clkroot_flexio2_oscrc400m, mux_clkroot_flexio2_oscrc16m,
+	mux_clkroot_flexio2_syspll3div2, mux_clkroot_flexio2_syspll1div5, mux_clkroot_flexio2_syspll2out, mux_clkroot_flexio2_syspll2pfd3 };
+
+/* Mux selector: GPT1 */
+enum { mux_clkroot_gpt1_oscrc48mdiv2 = 0, mux_clkroot_gpt1_osc24mout, mux_clkroot_gpt1_oscrc400m, mux_clkroot_gpt1_oscrc16m,
+	mux_clkroot_gpt1_syspll3div2, mux_clkroot_gpt1_syspll1div5, mux_clkroot_gpt1_syspll3pfd2, mux_clkroot_gpt1_syspll3pfd3 };
+
+/* Mux selector: GPT2 */
+enum { mux_clkroot_gpt2_oscrc48mdiv2 = 0, mux_clkroot_gpt2_osc24mout, mux_clkroot_gpt2_oscrc400m, mux_clkroot_gpt2_oscrc16m,
+	mux_clkroot_gpt2_syspll3div2, mux_clkroot_gpt2_syspll1div5, mux_clkroot_gpt2_audiopllout, mux_clkroot_gpt2_videopllout };
+
+/* Mux selector: GPT3 */
+enum { mux_clkroot_gpt3_oscrc48mdiv2 = 0, mux_clkroot_gpt3_osc24mout, mux_clkroot_gpt3_oscrc400m, mux_clkroot_gpt3_oscrc16m,
+	mux_clkroot_gpt3_syspll3div2, mux_clkroot_gpt3_syspll1div5, mux_clkroot_gpt3_audiopllout, mux_clkroot_gpt3_videopllout };
+
+/* Mux selector: GPT4 */
+enum { mux_clkroot_gpt4_oscrc48mdiv2 = 0, mux_clkroot_gpt4_osc24mout, mux_clkroot_gpt4_oscrc400m, mux_clkroot_gpt4_oscrc16m,
+	mux_clkroot_gpt4_syspll3div2, mux_clkroot_gpt4_syspll1div5, mux_clkroot_gpt4_syspll3pfd2, mux_clkroot_gpt4_syspll3pfd3 };
+
+/* Mux selector: GPT5 */
+enum { mux_clkroot_gpt5_oscrc48mdiv2 = 0, mux_clkroot_gpt5_osc24mout, mux_clkroot_gpt5_oscrc400m, mux_clkroot_gpt5_oscrc16m,
+	mux_clkroot_gpt5_syspll3div2, mux_clkroot_gpt5_syspll1div5, mux_clkroot_gpt5_syspll3pfd2, mux_clkroot_gpt5_syspll3pfd3 };
+
+/* Mux selector: GPT6 */
+enum { mux_clkroot_gpt6_oscrc48mdiv2 = 0, mux_clkroot_gpt6_osc24mout, mux_clkroot_gpt6_oscrc400m, mux_clkroot_gpt6_oscrc16m,
+	mux_clkroot_gpt6_syspll3div2, mux_clkroot_gpt6_syspll1div5, mux_clkroot_gpt6_syspll3pfd2, mux_clkroot_gpt6_syspll3pfd3 };
+
+/* Mux selector: FLEXSPI1 */
+enum { mux_clkroot_flexspi1_oscrc48mdiv2 = 0, mux_clkroot_flexspi1_osc24mout, mux_clkroot_flexspi1_oscrc400m, mux_clkroot_flexspi1_oscrc16m,
+	mux_clkroot_flexspi1_syspll3pfd0, mux_clkroot_flexspi1_syspll2out, mux_clkroot_flexspi1_syspll2pfd2, mux_clkroot_flexspi1_syspll3out };
+
+/* Mux selector: FLEXSPI2 */
+enum { mux_clkroot_flexspi2_oscrc48mdiv2 = 0, mux_clkroot_flexspi2_osc24mout, mux_clkroot_flexspi2_oscrc400m, mux_clkroot_flexspi2_oscrc16m,
+	mux_clkroot_flexspi2_syspll3pfd0, mux_clkroot_flexspi2_syspll2out, mux_clkroot_flexspi2_syspll2pfd2, mux_clkroot_flexspi2_syspll3out };
+
+/* Mux selector: CAN1 */
+enum { mux_clkroot_can1_oscrc48mdiv2 = 0, mux_clkroot_can1_osc24mout, mux_clkroot_can1_oscrc400m, mux_clkroot_can1_oscrc16m,
+	mux_clkroot_can1_syspll3div2, mux_clkroot_can1_syspll1div5, mux_clkroot_can1_syspll2out, mux_clkroot_can1_syspll2pfd3 };
+
+/* Mux selector: CAN2 */
+enum { mux_clkroot_can2_oscrc48mdiv2 = 0, mux_clkroot_can2_osc24mout, mux_clkroot_can2_oscrc400m, mux_clkroot_can2_oscrc16m,
+	mux_clkroot_can2_syspll3div2, mux_clkroot_can2_syspll1div5, mux_clkroot_can2_syspll2out, mux_clkroot_can2_syspll2pfd3 };
+
+/* Mux selector: CAN3 */
+enum { mux_clkroot_can3_oscrc48mdiv2 = 0, mux_clkroot_can3_osc24mout, mux_clkroot_can3_oscrc400m, mux_clkroot_can3_oscrc16m,
+	mux_clkroot_can3_syspll3pfd3, mux_clkroot_can3_syspll3out, mux_clkroot_can3_syspll2pfd3, mux_clkroot_can3_syspll1div5 };
+
+/* Mux selector: LPUART1 */
+enum { mux_clkroot_lpuart1_oscrc48mdiv2 = 0, mux_clkroot_lpuart1_osc24mout, mux_clkroot_lpuart1_oscrc400m, mux_clkroot_lpuart1_oscrc16m,
+	mux_clkroot_lpuart1_syspll3div2, mux_clkroot_lpuart1_syspll1div5, mux_clkroot_lpuart1_syspll2out, mux_clkroot_lpuart1_syspll2pfd3 };
+
+/* Mux selector: LPUART2 */
+enum { mux_clkroot_lpuart2_oscrc48mdiv2 = 0, mux_clkroot_lpuart2_osc24mout, mux_clkroot_lpuart2_oscrc400m, mux_clkroot_lpuart2_oscrc16m,
+	mux_clkroot_lpuart2_syspll3div2, mux_clkroot_lpuart2_syspll1div5, mux_clkroot_lpuart2_syspll2out, mux_clkroot_lpuart2_syspll2pfd3 };
+
+/* Mux selector: LPUART3 */
+enum { mux_clkroot_lpuart3_oscrc48mdiv2 = 0, mux_clkroot_lpuart3_osc24mout, mux_clkroot_lpuart3_oscrc400m, mux_clkroot_lpuart3_oscrc16m,
+	mux_clkroot_lpuart3_syspll3div2, mux_clkroot_lpuart3_syspll1div5, mux_clkroot_lpuart3_syspll2out, mux_clkroot_lpuart3_syspll2pfd3 };
+
+/* Mux selector: LPUART4 */
+enum { mux_clkroot_lpuart4_oscrc48mdiv2 = 0, mux_clkroot_lpuart4_osc24mout, mux_clkroot_lpuart4_oscrc400m, mux_clkroot_lpuart4_oscrc16m,
+	mux_clkroot_lpuart4_syspll3div2, mux_clkroot_lpuart4_syspll1div5, mux_clkroot_lpuart4_syspll2out, mux_clkroot_lpuart4_syspll2pfd3 };
+
+/* Mux selector: LPUART5 */
+enum { mux_clkroot_lpuart5_oscrc48mdiv2 = 0, mux_clkroot_lpuart5_osc24mout, mux_clkroot_lpuart5_oscrc400m, mux_clkroot_lpuart5_oscrc16m,
+	mux_clkroot_lpuart5_syspll3div2, mux_clkroot_lpuart5_syspll1div5, mux_clkroot_lpuart5_syspll2out, mux_clkroot_lpuart5_syspll2pfd3 };
+
+/* Mux selector: LPUART6 */
+enum { mux_clkroot_lpuart6_oscrc48mdiv2 = 0, mux_clkroot_lpuart6_osc24mout, mux_clkroot_lpuart6_oscrc400m, mux_clkroot_lpuart6_oscrc16m,
+	mux_clkroot_lpuart6_syspll3div2, mux_clkroot_lpuart6_syspll1div5, mux_clkroot_lpuart6_syspll2out, mux_clkroot_lpuart6_syspll2pfd3 };
+
+/* Mux selector: LPUART7 */
+enum { mux_clkroot_lpuart7_oscrc48mdiv2 = 0, mux_clkroot_lpuart7_osc24mout, mux_clkroot_lpuart7_oscrc400m, mux_clkroot_lpuart7_oscrc16m,
+	mux_clkroot_lpuart7_syspll3div2, mux_clkroot_lpuart7_syspll1div5, mux_clkroot_lpuart7_syspll2out, mux_clkroot_lpuart7_syspll2pfd3 };
+
+/* Mux selector: LPUART8 */
+enum { mux_clkroot_lpuart8_oscrc48mdiv2 = 0, mux_clkroot_lpuart8_osc24mout, mux_clkroot_lpuart8_oscrc400m, mux_clkroot_lpuart8_oscrc16m,
+	mux_clkroot_lpuart8_syspll3div2, mux_clkroot_lpuart8_syspll1div5, mux_clkroot_lpuart8_syspll2out, mux_clkroot_lpuart8_syspll2pfd3 };
+
+/* Mux selector: LPUART9 */
+enum { mux_clkroot_lpuart9_oscrc48mdiv2 = 0, mux_clkroot_lpuart9_osc24mout, mux_clkroot_lpuart9_oscrc400m, mux_clkroot_lpuart9_oscrc16m,
+	mux_clkroot_lpuart9_syspll3div2, mux_clkroot_lpuart9_syspll1div5, mux_clkroot_lpuart9_syspll2out, mux_clkroot_lpuart9_syspll2pfd3 };
+
+/* Mux selector: LPUART10 */
+enum { mux_clkroot_lpuart10_oscrc48mdiv2 = 0, mux_clkroot_lpuart10_osc24mout, mux_clkroot_lpuart10_oscrc400m, mux_clkroot_lpuart10_oscrc16m,
+	mux_clkroot_lpuart10_syspll3div2, mux_clkroot_lpuart10_syspll1div5, mux_clkroot_lpuart10_syspll2out, mux_clkroot_lpuart10_syspll2pfd3 };
+
+/* Mux selector: LPUART11 */
+enum { mux_clkroot_lpuart11_oscrc48mdiv2 = 0, mux_clkroot_lpuart11_osc24mout, mux_clkroot_lpuart11_oscrc400m, mux_clkroot_lpuart11_oscrc16m,
+	mux_clkroot_lpuart11_syspll3pfd3, mux_clkroot_lpuart11_syspll3out, mux_clkroot_lpuart11_syspll2pfd3, mux_clkroot_lpuart11_syspll1div5 };
+
+/* Mux selector: LPUART12 */
+enum { mux_clkroot_lpuart12_oscrc48mdiv2 = 0, mux_clkroot_lpuart12_osc24mout, mux_clkroot_lpuart12_oscrc400m, mux_clkroot_lpuart12_oscrc16m,
+	mux_clkroot_lpuart12_syspll3pfd3, mux_clkroot_lpuart12_syspll3out, mux_clkroot_lpuart12_syspll2pfd3, mux_clkroot_lpuart12_syspll1div5 };
+
+/* Mux selector: LPI2C1 */
+enum { mux_clkroot_lpi2c1_oscrc48mdiv2 = 0, mux_clkroot_lpi2c1_osc24mout, mux_clkroot_lpi2c1_oscrc400m, mux_clkroot_lpi2c1_oscrc16m,
+	mux_clkroot_lpi2c1_syspll3div2, mux_clkroot_lpi2c1_syspll1div5, mux_clkroot_lpi2c1_syspll2out, mux_clkroot_lpi2c1_syspll2pfd3 };
+
+/* Mux selector: LPI2C2 */
+enum { mux_clkroot_lpi2c2_oscrc48mdiv2 = 0, mux_clkroot_lpi2c2_osc24mout, mux_clkroot_lpi2c2_oscrc400m, mux_clkroot_lpi2c2_oscrc16m,
+	mux_clkroot_lpi2c2_syspll3div2, mux_clkroot_lpi2c2_syspll1div5, mux_clkroot_lpi2c2_syspll2out, mux_clkroot_lpi2c2_syspll2pfd3 };
+
+/* Mux selector: LPI2C3 */
+enum { mux_clkroot_lpi2c3_oscrc48mdiv2 = 0, mux_clkroot_lpi2c3_osc24mout, mux_clkroot_lpi2c3_oscrc400m, mux_clkroot_lpi2c3_oscrc16m,
+	mux_clkroot_lpi2c3_syspll3div2, mux_clkroot_lpi2c3_syspll1div5, mux_clkroot_lpi2c3_syspll2out, mux_clkroot_lpi2c3_syspll2pfd3 };
+
+/* Mux selector: LPI2C4 */
+enum { mux_clkroot_lpi2c4_oscrc48mdiv2 = 0, mux_clkroot_lpi2c4_osc24mout, mux_clkroot_lpi2c4_oscrc400m, mux_clkroot_lpi2c4_oscrc16m,
+	mux_clkroot_lpi2c4_syspll3div2, mux_clkroot_lpi2c4_syspll1div5, mux_clkroot_lpi2c4_syspll2out, mux_clkroot_lpi2c4_syspll2pfd3 };
+
+/* Mux selector: LPI2C5 */
+enum { mux_clkroot_lpi2c5_oscrc48mdiv2 = 0, mux_clkroot_lpi2c5_osc24mout, mux_clkroot_lpi2c5_oscrc400m, mux_clkroot_lpi2c5_oscrc16m,
+	mux_clkroot_lpi2c5_syspll3pfd3, mux_clkroot_lpi2c5_syspll3out, mux_clkroot_lpi2c5_syspll2pfd3, mux_clkroot_lpi2c5_syspll1div5 };
+
+/* Mux selector: LPI2C6 */
+enum { mux_clkroot_lpi2c6_oscrc48mdiv2 = 0, mux_clkroot_lpi2c6_osc24mout, mux_clkroot_lpi2c6_oscrc400m, mux_clkroot_lpi2c6_oscrc16m,
+	mux_clkroot_lpi2c6_syspll3pfd3, mux_clkroot_lpi2c6_syspll3out, mux_clkroot_lpi2c6_syspll2pfd3, mux_clkroot_lpi2c6_syspll1div5 };
+
+/* Mux selector: LPSPI1 */
+enum { mux_clkroot_lpspi1_oscrc48mdiv2 = 0, mux_clkroot_lpspi1_osc24mout, mux_clkroot_lpspi1_oscrc400m, mux_clkroot_lpspi1_oscrc16m,
+	mux_clkroot_lpspi1_syspll3pfd2, mux_clkroot_lpspi1_syspll1div5, mux_clkroot_lpspi1_syspll2out, mux_clkroot_lpspi1_syspll2pfd3 };
+
+/* Mux selector: LPSPI2 */
+enum { mux_clkroot_lpspi2_oscrc48mdiv2 = 0, mux_clkroot_lpspi2_osc24mout, mux_clkroot_lpspi2_oscrc400m, mux_clkroot_lpspi2_oscrc16m,
+	mux_clkroot_lpspi2_syspll3pfd2, mux_clkroot_lpspi2_syspll1div5, mux_clkroot_lpspi2_syspll2out, mux_clkroot_lpspi2_syspll2pfd3 };
+
+/* Mux selector: LPSPI3 */
+enum { mux_clkroot_lpspi3_oscrc48mdiv2 = 0, mux_clkroot_lpspi3_osc24mout, mux_clkroot_lpspi3_oscrc400m, mux_clkroot_lpspi3_oscrc16m,
+	mux_clkroot_lpspi3_syspll3pfd2, mux_clkroot_lpspi3_syspll1div5, mux_clkroot_lpspi3_syspll2out, mux_clkroot_lpspi3_syspll2pfd3 };
+
+/* Mux selector: LPSPI4 */
+enum { mux_clkroot_lpspi4_oscrc48mdiv2 = 0, mux_clkroot_lpspi4_osc24mout, mux_clkroot_lpspi4_oscrc400m, mux_clkroot_lpspi4_oscrc16m,
+	mux_clkroot_lpspi4_syspll3pfd2, mux_clkroot_lpspi4_syspll1div5, mux_clkroot_lpspi4_syspll2out, mux_clkroot_lpspi4_syspll2pfd3 };
+
+/* Mux selector: LPSPI5 */
+enum { mux_clkroot_lpspi5_oscrc48mdiv2 = 0, mux_clkroot_lpspi5_osc24mout, mux_clkroot_lpspi5_oscrc400m, mux_clkroot_lpspi5_oscrc16m,
+	mux_clkroot_lpspi5_syspll3pfd3, mux_clkroot_lpspi5_syspll3out, mux_clkroot_lpspi5_syspll3pfd2, mux_clkroot_lpspi5_syspll1div5 };
+
+/* Mux selector: LPSPI6 */
+enum { mux_clkroot_lpspi6_oscrc48mdiv2 = 0, mux_clkroot_lpspi6_osc24mout, mux_clkroot_lpspi6_oscrc400m, mux_clkroot_lpspi6_oscrc16m,
+	mux_clkroot_lpspi6_syspll3pfd3, mux_clkroot_lpspi6_syspll3out, mux_clkroot_lpspi6_syspll3pfd2, mux_clkroot_lpspi6_syspll1div5 };
+
+/* Mux selector: EMV1 */
+enum { mux_clkroot_emv1_oscrc48mdiv2 = 0, mux_clkroot_emv1_osc24mout, mux_clkroot_emv1_oscrc400m, mux_clkroot_emv1_oscrc16m,
+	mux_clkroot_emv1_syspll3div2, mux_clkroot_emv1_syspll1div5, mux_clkroot_emv1_syspll2out, mux_clkroot_emv1_syspll2pfd3 };
+
+/* Mux selector: EMV2 */
+enum { mux_clkroot_emv2_oscrc48mdiv2 = 0, mux_clkroot_emv2_osc24mout, mux_clkroot_emv2_oscrc400m, mux_clkroot_emv2_oscrc16m,
+	mux_clkroot_emv2_syspll3div2, mux_clkroot_emv2_syspll1div5, mux_clkroot_emv2_syspll2out, mux_clkroot_emv2_syspll2pfd3 };
+
+/* Mux selector: ENET1 */
+enum { mux_clkroot_enet1_oscrc48mdiv2 = 0, mux_clkroot_enet1_osc24mout, mux_clkroot_enet1_oscrc400m, mux_clkroot_enet1_oscrc16m,
+	mux_clkroot_enet1_syspll1div2, mux_clkroot_enet1_audiopllout, mux_clkroot_enet1_syspll1div5, mux_clkroot_enet1_syspll2pfd1 };
+
+/* Mux selector: ENET2 */
+enum { mux_clkroot_enet2_oscrc48mdiv2 = 0, mux_clkroot_enet2_osc24mout, mux_clkroot_enet2_oscrc400m, mux_clkroot_enet2_oscrc16m,
+	mux_clkroot_enet2_syspll1div2, mux_clkroot_enet2_audiopllout, mux_clkroot_enet2_syspll1div5, mux_clkroot_enet2_syspll2pfd1 };
+
+/* Mux selector: ENET_QOS */
+enum { mux_clkroot_enet_qos_oscrc48mdiv2 = 0, mux_clkroot_enet_qos_osc24mout, mux_clkroot_enet_qos_oscrc400m, mux_clkroot_enet_qos_oscrc16m,
+	mux_clkroot_enet_qos_syspll1div2, mux_clkroot_enet_qos_audiopllout, mux_clkroot_enet_qos_syspll1div5, mux_clkroot_enet_qos_syspll2pfd1 };
+
+/* Mux selector: ENET_25M */
+enum { mux_clkroot_enet_25m_oscrc48mdiv2 = 0, mux_clkroot_enet_25m_osc24mout, mux_clkroot_enet_25m_oscrc400m, mux_clkroot_enet_25m_oscrc16m,
+	mux_clkroot_enet_25m_syspll1div2, mux_clkroot_enet_25m_audiopllout, mux_clkroot_enet_25m_syspll1div5, mux_clkroot_enet_25m_syspll2pfd1 };
+
+/* Mux selector: ENET_TIMER1 */
+enum { mux_clkroot_enet_timer1_oscrc48mdiv2 = 0, mux_clkroot_enet_timer1_osc24mout, mux_clkroot_enet_timer1_oscrc400m, mux_clkroot_enet_timer1_oscrc16m,
+	mux_clkroot_enet_timer1_syspll1div2, mux_clkroot_enet_timer1_audiopllout, mux_clkroot_enet_timer1_syspll1div5, mux_clkroot_enet_timer1_syspll2pfd1 };
+
+/* Mux selector: ENET_TIMER2 */
+enum { mux_clkroot_enet_timer2_oscrc48mdiv2 = 0, mux_clkroot_enet_timer2_osc24mout, mux_clkroot_enet_timer2_oscrc400m, mux_clkroot_enet_timer2_oscrc16m,
+	mux_clkroot_enet_timer2_syspll1div2, mux_clkroot_enet_timer2_audiopllout, mux_clkroot_enet_timer2_syspll1div5, mux_clkroot_enet_timer2_syspll2pfd1 };
+
+/* Mux selector: ENET_TIMER3 */
+enum { mux_clkroot_enet_timer3_oscrc48mdiv2 = 0, mux_clkroot_enet_timer3_osc24mout, mux_clkroot_enet_timer3_oscrc400m, mux_clkroot_enet_timer3_oscrc16m,
+	mux_clkroot_enet_timer3_syspll1div2, mux_clkroot_enet_timer3_audiopllout, mux_clkroot_enet_timer3_syspll1div5, mux_clkroot_enet_timer3_syspll2pfd1 };
+
+/* Mux selector: USDHC1 */
+enum { mux_clkroot_usdhc1_oscrc48mdiv2 = 0, mux_clkroot_usdhc1_osc24mout, mux_clkroot_usdhc1_oscrc400m, mux_clkroot_usdhc1_oscrc16m,
+	mux_clkroot_usdhc1_syspll2pfd2, mux_clkroot_usdhc1_syspll2pfd0, mux_clkroot_usdhc1_syspll1div5, mux_clkroot_usdhc1_armpllout };
+
+/* Mux selector: USDHC2 */
+enum { mux_clkroot_usdhc2_oscrc48mdiv2 = 0, mux_clkroot_usdhc2_osc24mout, mux_clkroot_usdhc2_oscrc400m, mux_clkroot_usdhc2_oscrc16m,
+	mux_clkroot_usdhc2_syspll2pfd2, mux_clkroot_usdhc2_syspll2pfd0, mux_clkroot_usdhc2_syspll1div5, mux_clkroot_usdhc2_armpllout };
+
+/* Mux selector: ASRC */
+enum { mux_clkroot_asrc_oscrc48mdiv2 = 0, mux_clkroot_asrc_osc24mout, mux_clkroot_asrc_oscrc400m, mux_clkroot_asrc_oscrc16m,
+	mux_clkroot_asrc_syspll1div5, mux_clkroot_asrc_syspll3div2, mux_clkroot_asrc_audiopllout, mux_clkroot_asrc_syspll2pfd3 };
+
+/* Mux selector: MQS */
+enum { mux_clkroot_mqs_oscrc48mdiv2 = 0, mux_clkroot_mqs_osc24mout, mux_clkroot_mqs_oscrc400m, mux_clkroot_mqs_oscrc16m,
+	mux_clkroot_mqs_syspll1div5, mux_clkroot_mqs_syspll3div2, mux_clkroot_mqs_audiopllout, mux_clkroot_mqs_syspll2pfd3 };
+
+/* Mux selector: MIC */
+enum { mux_clkroot_mic_oscrc48mdiv2 = 0, mux_clkroot_mic_osc24mout, mux_clkroot_mic_oscrc400m, mux_clkroot_mic_oscrc16m,
+	mux_clkroot_mic_syspll3pfd3, mux_clkroot_mic_syspll3out, mux_clkroot_mic_audiopllout, mux_clkroot_mic_syspll1div5 };
+
+/* Mux selector: SPDIF */
+enum { mux_clkroot_spdif_oscrc48mdiv2 = 0, mux_clkroot_spdif_osc24mout, mux_clkroot_spdif_oscrc400m, mux_clkroot_spdif_oscrc16m,
+	mux_clkroot_spdif_audiopllout, mux_clkroot_spdif_syspll3out, mux_clkroot_spdif_syspll3pfd2, mux_clkroot_spdif_syspll2pfd3 };
+
+/* Mux selector: SAI1 */
+enum { mux_clkroot_sai1_oscrc48mdiv2 = 0, mux_clkroot_sai1_osc24mout, mux_clkroot_sai1_oscrc400m, mux_clkroot_sai1_oscrc16m,
+	mux_clkroot_sai1_audiopllout, mux_clkroot_sai1_syspll3pfd2, mux_clkroot_sai1_syspll1div5, mux_clkroot_sai1_syspll2pfd3 };
+
+/* Mux selector: SAI2 */
+enum { mux_clkroot_sai2_oscrc48mdiv2 = 0, mux_clkroot_sai2_osc24mout, mux_clkroot_sai2_oscrc400m, mux_clkroot_sai2_oscrc16m,
+	mux_clkroot_sai2_audiopllout, mux_clkroot_sai2_syspll3pfd2, mux_clkroot_sai2_syspll1div5, mux_clkroot_sai2_syspll2pfd3 };
+
+/* Mux selector: SAI3 */
+enum { mux_clkroot_sai3_oscrc48mdiv2 = 0, mux_clkroot_sai3_osc24mout, mux_clkroot_sai3_oscrc400m, mux_clkroot_sai3_oscrc16m,
+	mux_clkroot_sai3_audiopllout, mux_clkroot_sai3_syspll3pfd2, mux_clkroot_sai3_syspll1div5, mux_clkroot_sai3_syspll2pfd3 };
+
+/* Mux selector: SAI4 */
+enum { mux_clkroot_sai4_oscrc48mdiv2 = 0, mux_clkroot_sai4_osc24mout, mux_clkroot_sai4_oscrc400m, mux_clkroot_sai4_oscrc16m,
+	mux_clkroot_sai4_syspll3pfd3, mux_clkroot_sai4_syspll3out, mux_clkroot_sai4_audiopllout, mux_clkroot_sai4_syspll1div5 };
+
+/* Mux selector: GC355 */
+enum { mux_clkroot_gc355_oscrc48mdiv2 = 0, mux_clkroot_gc355_osc24mout, mux_clkroot_gc355_oscrc400m, mux_clkroot_gc355_oscrc16m,
+	mux_clkroot_gc355_syspll2out, mux_clkroot_gc355_syspll2pfd1, mux_clkroot_gc355_syspll3out, mux_clkroot_gc355_videopllout };
+
+/* Mux selector: LCDIF */
+enum { mux_clkroot_lcdif_oscrc48mdiv2 = 0, mux_clkroot_lcdif_osc24mout, mux_clkroot_lcdif_oscrc400m, mux_clkroot_lcdif_oscrc16m,
+	mux_clkroot_lcdif_syspll2out, mux_clkroot_lcdif_syspll2pfd2, mux_clkroot_lcdif_syspll3pfd0, mux_clkroot_lcdif_videopllout };
+
+/* Mux selector: LCDIFV2 */
+enum { mux_clkroot_lcdifv2_oscrc48mdiv2 = 0, mux_clkroot_lcdifv2_osc24mout, mux_clkroot_lcdifv2_oscrc400m, mux_clkroot_lcdifv2_oscrc16m,
+	mux_clkroot_lcdifv2_syspll2out, mux_clkroot_lcdifv2_syspll2pfd2, mux_clkroot_lcdifv2_syspll3pfd0, mux_clkroot_lcdifv2_videopllout };
+
+/* Mux selector: MIPI_REF */
+enum { mux_clkroot_mipi_ref_oscrc48mdiv2 = 0, mux_clkroot_mipi_ref_osc24mout, mux_clkroot_mipi_ref_oscrc400m, mux_clkroot_mipi_ref_oscrc16m,
+	mux_clkroot_mipi_ref_syspll2out, mux_clkroot_mipi_ref_syspll2pfd0, mux_clkroot_mipi_ref_syspll3pfd0, mux_clkroot_mipi_ref_videopllout };
+
+/* Mux selector: MIPI_ESC */
+enum { mux_clkroot_mipi_esc_oscrc48mdiv2 = 0, mux_clkroot_mipi_esc_osc24mout, mux_clkroot_mipi_esc_oscrc400m, mux_clkroot_mipi_esc_oscrc16m,
+	mux_clkroot_mipi_esc_syspll2out, mux_clkroot_mipi_esc_syspll2pfd0, mux_clkroot_mipi_esc_syspll3pfd0, mux_clkroot_mipi_esc_videopllout };
+
+/* Mux selector: CSI2 */
+enum { mux_clkroot_csi2_oscrc48mdiv2 = 0, mux_clkroot_csi2_osc24mout, mux_clkroot_csi2_oscrc400m, mux_clkroot_csi2_oscrc16m,
+	mux_clkroot_csi2_syspll2pfd2, mux_clkroot_csi2_syspll3out, mux_clkroot_csi2_syspll2pfd0, mux_clkroot_csi2_videopllout };
+
+/* Mux selector: CSI2_ESC */
+enum { mux_clkroot_csi2_esc_oscrc48mdiv2 = 0, mux_clkroot_csi2_esc_osc24mout, mux_clkroot_csi2_esc_oscrc400m, mux_clkroot_csi2_esc_oscrc16m,
+	mux_clkroot_csi2_esc_syspll2pfd2, mux_clkroot_csi2_esc_syspll3out, mux_clkroot_csi2_esc_syspll2pfd0, mux_clkroot_csi2_esc_videopllout };
+
+/* Mux selector: CSI2_UI */
+enum { mux_clkroot_csi2_ui_oscrc48mdiv2 = 0, mux_clkroot_csi2_ui_osc24mout, mux_clkroot_csi2_ui_oscrc400m, mux_clkroot_csi2_ui_oscrc16m,
+	mux_clkroot_csi2_ui_syspll2pfd2, mux_clkroot_csi2_ui_syspll3out, mux_clkroot_csi2_ui_syspll2pfd0, mux_clkroot_csi2_ui_videopllout };
+
+/* Mux selector: CSI */
+enum { mux_clkroot_csi_oscrc48mdiv2 = 0, mux_clkroot_csi_osc24mout, mux_clkroot_csi_oscrc400m, mux_clkroot_csi_oscrc16m,
+	mux_clkroot_csi_syspll2pfd2, mux_clkroot_csi_syspll3out, mux_clkroot_csi_syspll3pfd1, mux_clkroot_csi_videopllout };
+
+/* Mux selector: CKO1 */
+enum { mux_clkroot_cko1_oscrc48mdiv2 = 0, mux_clkroot_cko1_osc24mout, mux_clkroot_cko1_oscrc400m, mux_clkroot_cko1_oscrc16m,
+	mux_clkroot_cko1_syspll2pfd2, mux_clkroot_cko1_syspll2out, mux_clkroot_cko1_syspll3pfd1, mux_clkroot_cko1_syspll1div5 };
+
+/* Mux selector: CKO2 */
+enum { mux_clkroot_cko2_oscrc48mdiv2 = 0, mux_clkroot_cko2_osc24mout, mux_clkroot_cko2_oscrc400m, mux_clkroot_cko2_oscrc16m,
+	mux_clkroot_cko2_syspll2pfd3, mux_clkroot_cko2_oscrc48m, mux_clkroot_cko2_syspll3pfd1, mux_clkroot_cko2_audiopllout };
+
 /* clang-format on */
 
 
@@ -351,6 +681,12 @@ extern int _imxrt_getDevClock(int clock, int *div, int *mux, int *mfd, int *mfn,
 
 
 extern int _imxrt_setDevClock(int clock, int div, int mux, int mfd, int mfn, int state);
+
+
+extern void _imxrt_initArmPll(u8 loopDivider, u8 postDivider);
+
+
+extern void _imxrt_setRootClock(u8 root, u8 mux, u8 div, u8 clockoff);
 
 
 extern void _imxrt_init(void);

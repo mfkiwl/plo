@@ -41,6 +41,22 @@ enum { wdog_wcr = 0, wdog_wsr, wdog_wrsr, wdog_wicr, wdog_wmcr };
 enum { rtwdog_cs = 0, rtwdog_cnt, rtwdog_total, rtwdog_win };
 
 
+/* ANADIG & ANATOP complex */
+enum { arm_pll_ctrl = 0x80, sys_pll3_ctrl = 0x84, sys_pll3_update= 0x88, sys_pll3_pfd = 0x8c,
+	sys_pll2_ctrl = 0x90, sys_pll2_update = 0x94, sys_pll2_ss = 0x98, sys_pll2_pfd = 0x9c,
+	sys_pll2_mfd = 0xa8, sys_pll1_ss = 0xac, sys_pll1_ctrl = 0xb0, sys_pll1_denominator = 0xb4,
+	sys_pll1_numerator = 0xb8, sys_pll1_div_select = 0xbc, pll_audio_ctrl = 0xc0, pll_audio_ss = 0xc4,
+	pll_audio_denominator = 0xc8, pll_audio_numerator = 0xcc, pll_audio_div_select = 0xd0, pll_video_ctrl = 0xd4,
+	pll_video_ss = 0xd8, pll_video_denominator = 0xdc, pll_video_numerator = 0xe0, pll_video_div_select = 0xe4,
+
+	/* PMU */
+	pmu_ldo_pll = 0x140, pmu_ref_ctrl = 0x15c,
+
+	/* ANATOP AI */
+	vddsoc_ai_ctrl = 0x208, vddsoc_ai_wdata = 0x20c, vddsoc_ai_rdata = 0x210
+};
+
+
 struct {
 	volatile u32 *aips[4];
 	volatile u32 *stk;
@@ -55,6 +71,7 @@ struct {
 	volatile u32 *iomuxc;
 	volatile u32 *gpio[13];
 	volatile u32 *ccm;
+	volatile u32 *anadig_pll;
 
 	u32 cpuclk;
 	u32 cm4state;
@@ -389,6 +406,206 @@ __attribute__((section(".noxip"))) int _imxrt_setLevelLPCG(int clock, int level)
 }
 
 
+__attribute__((section(".noxip"))) void _imxrt_setRootClock(u8 root, u8 mux, u8 div, u8 clockoff)
+{
+	*(imxrt_common.ccm + 0x20u * (u32)root) = ((clockoff != 0) ? (1uL << 24u) : 0u) |
+		(((u32)mux & 7u) << 8u) | (((u32)div - 1u) & 0xffu);
+	hal_cpuDataMemoryBarrier();
+	hal_cpuInstrBarrier();
+}
+
+
+static void _imxrt_pmuEnablePllLdo(void)
+{
+	u32 val;
+
+	/* Set address of PHY_LDO_CTRL0 */
+	val = *(imxrt_common.anadig_pll + vddsoc_ai_ctrl);
+	*(imxrt_common.anadig_pll + vddsoc_ai_ctrl) = val | (1uL << 16u);
+
+	val = *(imxrt_common.anadig_pll + vddsoc_ai_ctrl) & ~(0xffu);
+	*(imxrt_common.anadig_pll + vddsoc_ai_ctrl) = val | (0); /* PHY_LDO_CTRL0 = 0 */
+
+	/* Toggle ldo PLL AI */
+	*(imxrt_common.anadig_pll + pmu_ldo_pll) ^= 1uL << 16u;
+	/* Read data */
+	val = *(imxrt_common.anadig_pll + vddsoc_ai_rdata);
+
+	if (val == ((0x10uL << 4u) | (1u << 2u) | 1u)) {
+		/* Already set PHY_LDO_CTRL0 LDO */
+		return;
+	}
+
+	val = *(imxrt_common.anadig_pll + vddsoc_ai_ctrl);
+	*(imxrt_common.anadig_pll + vddsoc_ai_ctrl) = val & ~(1uL << 16u);
+
+	val = *(imxrt_common.anadig_pll + vddsoc_ai_ctrl) & ~(0xffu);
+	*(imxrt_common.anadig_pll + vddsoc_ai_ctrl) = val | (0); /* PHY_LDO_CTRL0 = 0 */
+
+	/* Write data */
+	*(imxrt_common.anadig_pll + vddsoc_ai_wdata) = (0x10u << 4u) | (1u << 2u) | 1u;
+	/* Toggle ldo PLL AI */
+	*(imxrt_common.anadig_pll + pmu_ldo_pll) ^= 1uL << 16u;
+
+	/* Busy wait ~3us */
+	for (unsigned i = 0; i < 0x10000u; i++) {
+		asm volatile("nop");
+	}
+
+	/* Enable Voltage Reference for PLLs before those PLLs were enabled */
+	*(imxrt_common.anadig_pll + pmu_ref_ctrl) = 1u << 4u;
+}
+
+
+void _imxrt_initArmPll(u8 loopDivider, u8 postDivider)
+{
+	u32 m7clkroot, reg;
+
+	if ((loopDivider <= 104u) || (208u <= loopDivider)) {
+		return;
+	}
+
+	/* Save current M7 clock root */
+	m7clkroot = *(imxrt_common.ccm + 0x20u * clkroot_m7);
+
+	/* Temporarily switch M7 clock trusted clock source if not already */
+	if (((m7clkroot >> 8u) & 0xffu) != mux_clkroot_m7_oscrc400m) {
+		_imxrt_setRootClock(clkroot_m7, mux_clkroot_m7_oscrc400m, 1, 0);
+	}
+
+	_imxrt_pmuEnablePllLdo();
+
+	reg = *(imxrt_common.anadig_pll + arm_pll_ctrl) & ~(1uL << 29u);
+
+	/* Disable and gate clock if not already */
+	if ((reg & ((1uL << 13u) | (1uL << 14u))) != 0u) {
+		/* Power down the PLL, disable clock */
+		reg &= ~((1uL << 13u) | (1uL << 14u));
+		/* Gate the clock */
+		reg |= 1uL << 30u;
+		*(imxrt_common.anadig_pll + arm_pll_ctrl) = reg;
+	}
+
+	/* Set the configuration. */
+	reg &= ~((3uL << 15u) | 0xffu);
+	reg |= ((loopDivider & 0xffu) | ((postDivider & 3uL) << 15u)) | (1uL << 30u) | (1uL << 13u);
+	*(imxrt_common.anadig_pll + arm_pll_ctrl) = reg;
+
+	hal_cpuDataMemoryBarrier();
+	hal_cpuInstrBarrier();
+
+	/* Wait for stable PLL */
+	while ((*(imxrt_common.anadig_pll + arm_pll_ctrl) & (1uL << 29u)) == 0u) {
+	}
+
+	/* Enable the clock. */
+	reg |= 1uL << 14u;
+
+	/* Ungate the clock */
+	reg &= ~(1uL << 30u);
+
+	*(imxrt_common.anadig_pll + arm_pll_ctrl) = reg;
+
+	/* Restore previous M7 clock mux */
+	*(imxrt_common.ccm + 0x20u * clkroot_m7) = m7clkroot;
+}
+
+
+void _imxrt_initClockTree(void)
+{
+	static const struct {
+		u8 root;
+		u8 mux;
+		u8 div;
+		u8 clkoff;
+	} clktree[] = {
+		{ clkroot_m7, mux_clkroot_m7_armpllout, 1, 0 },
+		/* { clkroot_m4, 1, mux_clkroot_m4_syspll3pfd3, 0 }, */
+		{ clkroot_bus, mux_clkroot_bus_syspll3out, 2, 0 },
+		{ clkroot_bus_lpsr, mux_clkroot_bus_lpsr_syspll3out, 3, 0 },
+		/* { clkroot_semc, mux_clkroot_semc_syspll2pfd1, 3, 0 }, */
+		{ clkroot_cssys, mux_clkroot_cssys_oscrc48mdiv2, 1, 0 },
+		{ clkroot_cstrace, mux_clkroot_cstrace_syspll2out, 4, 0 },
+		{ clkroot_m4_systick, mux_clkroot_m4_systick_oscrc48mdiv2, 1, 0 },
+		{ clkroot_m7_systick, mux_clkroot_m7_systick_oscrc48mdiv2, 2, 0 },
+		{ clkroot_adc1, mux_clkroot_adc1_oscrc48mdiv2, 1, 0 },
+		{ clkroot_adc2, mux_clkroot_adc2_oscrc48mdiv2, 1, 0 },
+		{ clkroot_acmp, mux_clkroot_acmp_oscrc48mdiv2, 1, 0 },
+		{ clkroot_flexio1, mux_clkroot_flexio1_oscrc48mdiv2, 1, 0 },
+		{ clkroot_flexio2, mux_clkroot_flexio2_oscrc48mdiv2, 1, 0 },
+		{ clkroot_gpt1, mux_clkroot_gpt1_oscrc48mdiv2, 1, 0 },
+		{ clkroot_gpt2, mux_clkroot_gpt2_oscrc48mdiv2, 1, 0 },
+		{ clkroot_gpt3, mux_clkroot_gpt3_oscrc48mdiv2, 1, 0 },
+		{ clkroot_gpt4, mux_clkroot_gpt4_oscrc48mdiv2, 1, 0 },
+		{ clkroot_gpt5, mux_clkroot_gpt5_oscrc48mdiv2, 1, 0 },
+		{ clkroot_gpt6, mux_clkroot_gpt6_oscrc48mdiv2, 1, 0 },
+		/* { clkroot_flexspi1, mux_clkroot_flexspi1_oscrc48mdiv2, 1, 0 }, */
+		/* { clkroot_flexspi2, mux_clkroot_flexspi2_oscrc48mdiv2, 1, 0 }, */
+		{ clkroot_can1, mux_clkroot_can1_oscrc48mdiv2, 1, 0 },
+		{ clkroot_can2, mux_clkroot_can2_oscrc48mdiv2, 1, 0 },
+		{ clkroot_can3, mux_clkroot_can3_oscrc48mdiv2, 1, 0 },
+		{ clkroot_lpuart1, mux_clkroot_lpuart1_syspll2out, 2, 0 },
+		{ clkroot_lpuart2, mux_clkroot_lpuart2_syspll2out, 2, 0 },
+		{ clkroot_lpuart3, mux_clkroot_lpuart3_oscrc48mdiv2, 1, 0 },
+		{ clkroot_lpuart4, mux_clkroot_lpuart4_oscrc48mdiv2, 1, 0 },
+		{ clkroot_lpuart5, mux_clkroot_lpuart5_oscrc48mdiv2, 1, 0 },
+		{ clkroot_lpuart6, mux_clkroot_lpuart6_oscrc48mdiv2, 1, 0 },
+		{ clkroot_lpuart7, mux_clkroot_lpuart7_oscrc48mdiv2, 1, 0 },
+		{ clkroot_lpuart8, mux_clkroot_lpuart8_oscrc48mdiv2, 1, 0 },
+		{ clkroot_lpuart9, mux_clkroot_lpuart9_oscrc48mdiv2, 1, 0 },
+		{ clkroot_lpuart10, mux_clkroot_lpuart10_oscrc48mdiv2, 1, 0 },
+		{ clkroot_lpuart11, mux_clkroot_lpuart11_oscrc48mdiv2, 1, 0 },
+		{ clkroot_lpuart12, mux_clkroot_lpuart12_oscrc48mdiv2, 1, 0 },
+		{ clkroot_lpi2c1, mux_clkroot_lpi2c1_oscrc48mdiv2, 1, 0 },
+		{ clkroot_lpi2c2, mux_clkroot_lpi2c2_oscrc48mdiv2, 1, 0 },
+		{ clkroot_lpi2c3, mux_clkroot_lpi2c3_oscrc48mdiv2, 1, 0 },
+		{ clkroot_lpi2c4, mux_clkroot_lpi2c4_oscrc48mdiv2, 1, 0 },
+		{ clkroot_lpi2c5, mux_clkroot_lpi2c5_oscrc48mdiv2, 1, 0 },
+		{ clkroot_lpi2c6, mux_clkroot_lpi2c6_oscrc48mdiv2, 1, 0 },
+		{ clkroot_lpspi1, mux_clkroot_lpspi1_oscrc48mdiv2, 1, 0 },
+		{ clkroot_lpspi2, mux_clkroot_lpspi2_oscrc48mdiv2, 1, 0 },
+		{ clkroot_lpspi3, mux_clkroot_lpspi3_oscrc48mdiv2, 1, 0 },
+		{ clkroot_lpspi4, mux_clkroot_lpspi4_oscrc48mdiv2, 1, 0 },
+		{ clkroot_lpspi5, mux_clkroot_lpspi5_oscrc48mdiv2, 1, 0 },
+		{ clkroot_lpspi6, mux_clkroot_lpspi6_oscrc48mdiv2, 1, 0 },
+		{ clkroot_emv1, mux_clkroot_emv1_oscrc48mdiv2, 1, 0 },
+		{ clkroot_emv2, mux_clkroot_emv2_oscrc48mdiv2, 1, 0 },
+		{ clkroot_enet1, mux_clkroot_enet1_oscrc48mdiv2, 1, 0 },
+		{ clkroot_enet2, mux_clkroot_enet2_oscrc48mdiv2, 1, 0 },
+		{ clkroot_enet_qos, mux_clkroot_enet_qos_oscrc48mdiv2, 1, 0 },
+		{ clkroot_enet_25m, mux_clkroot_enet_25m_oscrc48mdiv2, 1, 0 },
+		{ clkroot_enet_timer1, mux_clkroot_enet_timer1_oscrc48mdiv2, 1, 0 },
+		{ clkroot_enet_timer2, mux_clkroot_enet_timer2_oscrc48mdiv2, 1, 0 },
+		{ clkroot_enet_timer3, mux_clkroot_enet_timer3_oscrc48mdiv2, 1, 0 },
+		{ clkroot_usdhc1, mux_clkroot_usdhc1_oscrc48mdiv2, 1, 0 },
+		{ clkroot_usdhc2, mux_clkroot_usdhc2_oscrc48mdiv2, 1, 0 },
+		{ clkroot_asrc, mux_clkroot_asrc_oscrc48mdiv2, 1, 0 },
+		{ clkroot_mqs, mux_clkroot_mqs_oscrc48mdiv2, 1, 0 },
+		{ clkroot_mic, mux_clkroot_mic_oscrc48mdiv2, 1, 0 },
+		{ clkroot_spdif, mux_clkroot_spdif_oscrc48mdiv2, 1, 0 },
+		{ clkroot_sai1, mux_clkroot_sai1_oscrc48mdiv2, 1, 0 },
+		{ clkroot_sai2, mux_clkroot_sai2_oscrc48mdiv2, 1, 0 },
+		{ clkroot_sai3, mux_clkroot_sai3_oscrc48mdiv2, 1, 0 },
+		{ clkroot_sai4, mux_clkroot_sai4_oscrc48mdiv2, 1, 0 },
+		{ clkroot_gc355, mux_clkroot_gc355_videopllout, 2, 0 },
+		{ clkroot_lcdif, mux_clkroot_lcdif_oscrc48mdiv2, 1, 0 },
+		{ clkroot_lcdifv2, mux_clkroot_lcdifv2_oscrc48mdiv2, 1, 0 },
+		{ clkroot_mipi_ref, mux_clkroot_mipi_ref_oscrc48mdiv2, 1, 0 },
+		{ clkroot_mipi_esc, mux_clkroot_mipi_esc_oscrc48mdiv2, 1, 0 },
+		{ clkroot_csi2, mux_clkroot_csi2_oscrc48mdiv2, 1, 0 },
+		{ clkroot_csi2_esc, mux_clkroot_csi2_esc_oscrc48mdiv2, 1, 0 },
+		{ clkroot_csi2_ui, mux_clkroot_csi2_ui_oscrc48mdiv2, 1, 0 },
+		{ clkroot_csi, mux_clkroot_csi_oscrc48mdiv2, 1, 0 },
+		{ clkroot_cko1, mux_clkroot_cko1_oscrc48mdiv2, 1, 0 },
+		{ clkroot_cko2, mux_clkroot_cko2_oscrc48mdiv2, 1, 0 },
+	};
+
+	for (unsigned n = 0; n < sizeof(clktree) / sizeof(clktree[0]); n++) {
+		_imxrt_setRootClock(clktree[n].root, clktree[n].mux, clktree[n].div, clktree[n].clkoff);
+	}
+}
+
+
 /* CM4 */
 
 
@@ -462,6 +679,7 @@ void _imxrt_init(void)
 	imxrt_common.iomuxc_gpr = (void *)0x400e4000;
 	imxrt_common.iomuxc = (void *)0x400e8000;
 	imxrt_common.ccm = (void *)0x40cc0000;
+	imxrt_common.anadig_pll = (void *)0x40c84000;
 
 	imxrt_common.gpio[0] = (void *)0x4012c000;
 	imxrt_common.gpio[1] = (void *)0x40130000;
@@ -480,6 +698,12 @@ void _imxrt_init(void)
 	imxrt_common.cpuclk = 640000000;
 
 	imxrt_common.cm4state = (*(imxrt_common.src + src_scr) & 1u);
+
+	/* Initialize ARM PLL to 996 MHz */
+	_imxrt_initArmPll(166, 0);
+
+	/* Module clock root configurations */
+	_imxrt_initClockTree();
 
 	/* Disable watchdogs */
 	if (*(imxrt_common.wdog1 + wdog_wcr) & (1 << 2))
