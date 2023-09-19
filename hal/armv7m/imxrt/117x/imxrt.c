@@ -44,7 +44,8 @@ enum { rtwdog_cs = 0, rtwdog_cnt, rtwdog_total, rtwdog_win };
 /* ANADIG & ANATOP complex */
 enum {
 	/* OSC */
-	osc_48m_ctrl = 0x04, osc_24m_ctrl, osc_400m_ctrl0 = 0x10, osc_400m_ctrl1, osc_400m_ctrl2, osc_16m_ctrl = 0x30,
+	osc_48m_ctrl = 0x04, osc_24m_ctrl = 0x08, osc_400m_ctrl0 = 0x10, osc_400m_ctrl1 = 0x14, osc_400m_ctrl2 = 0x18,
+	osc_16m_ctrl = 0x30,
 	/* PLL */
 	arm_pll_ctrl = 0x80, sys_pll3_ctrl = 0x84, sys_pll3_update= 0x88, sys_pll3_pfd = 0x8c,
 	sys_pll2_ctrl = 0x90, sys_pll2_update = 0x94, sys_pll2_ss = 0x98, sys_pll2_pfd = 0x9c,
@@ -54,7 +55,9 @@ enum {
 	pll_video_ss = 0xd8, pll_video_denominator = 0xdc, pll_video_numerator = 0xe0, pll_video_div_select = 0xe4,
 
 	/* PMU */
-	pmu_ldo_pll = 0x140, pmu_ref_ctrl = 0x15c,
+	pmu_ldo_pll = 0x140, pmu_ldo_lpsr_ana = 0x144, pmu_ldo_lpsr_dig2 = 0x148, pmu_ldo_lpsr_dig = 0x14c,
+	pmu_ref_ctrl = 0x15c,
+
 
 	/* ANATOP AI */
 	vddsoc_ai_ctrl = 0x208, vddsoc_ai_wdata = 0x20c, vddsoc_ai_rdata = 0x210
@@ -419,6 +422,88 @@ __attribute__((section(".noxip"))) void _imxrt_setRootClock(u8 root, u8 mux, u8 
 }
 
 
+void _imxrt_waitus(unsigned int n)
+{
+	/* TODO: use better method e.g. count cycles, must not use irqs! */
+	for (unsigned i = 0; i < n * 0x1000u; i++) {
+		asm volatile("nop");
+	}
+}
+
+
+void _imxrt_setPllBypass(u8 clk_pll, u8 enable)
+{
+	/* clang-format off */
+	switch (clk_pll) {
+		case clk_pllarm:
+			*(imxrt_common.anadig_pll + arm_pll_ctrl) = (enable != 0) ?
+				(*(imxrt_common.anadig_pll + arm_pll_ctrl) | (1uL << 17u)) :
+				(*(imxrt_common.anadig_pll + arm_pll_ctrl) & ~(1uL << 17u));
+			break;
+		case clk_pllsys1:
+			*(imxrt_common.anadig_pll + sys_pll1_ctrl) = (enable != 0) ?
+				(*(imxrt_common.anadig_pll + sys_pll1_ctrl) | (1uL << 16u)) :
+				(*(imxrt_common.anadig_pll + sys_pll1_ctrl) & ~(1uL << 16u));
+			break;
+		case clk_pllsys2:
+			*(imxrt_common.anadig_pll + sys_pll2_ctrl) = (enable != 0) ?
+				(*(imxrt_common.anadig_pll + sys_pll2_ctrl) | (1uL << 16u)) :
+				(*(imxrt_common.anadig_pll + sys_pll2_ctrl) & ~(1uL << 16u));
+			break;
+		case clk_pllsys3:
+			*(imxrt_common.anadig_pll + sys_pll3_ctrl) = (enable != 0) ?
+				(*(imxrt_common.anadig_pll + sys_pll3_ctrl) | (1uL << 16u)) :
+				(*(imxrt_common.anadig_pll + sys_pll3_ctrl) & ~(1uL << 16u));
+			break;
+		case clk_pllaudio:
+			/* TODO: access through ANATOP AI */
+			break;
+		case clk_pllvideo:
+			/* TODO: access through ANATOP AI */
+			break;
+		default:
+			break;
+	}
+	/* clang-format on */
+}
+
+
+void _imxrt_pmuBypassAnaLdo(void)
+{
+	/* HP mode */
+	*(imxrt_common.anadig_pll + pmu_ldo_lpsr_ana) &= ~1u;
+	_imxrt_waitus(1000);
+
+	/* Tracking mode */
+	*(imxrt_common.anadig_pll + pmu_ldo_lpsr_ana) |= 1uL << 19u;
+	_imxrt_waitus(1000);
+
+	/* Enable bypass mode */
+	*(imxrt_common.anadig_pll + pmu_ldo_lpsr_ana) |= 1u << 5u;
+	_imxrt_waitus(1000);
+
+	/* Disable ana_lpsr regulator */
+	*(imxrt_common.anadig_pll + pmu_ldo_lpsr_ana) |= 1u << 2u;
+	_imxrt_waitus(1000);
+}
+
+
+void _imxrt_pmuBypassDigLdo(void)
+{
+	/* Tracking mode */
+	*(imxrt_common.anadig_pll + pmu_ldo_lpsr_dig) |= 1uL << 17u;
+	_imxrt_waitus(1000);
+
+	/* Set bypass mode */
+	*(imxrt_common.anadig_pll + pmu_ldo_lpsr_dig) |= 1uL << 18u;
+	_imxrt_waitus(1000);
+
+	/* Disable dig_lpsr regulator */
+	*(imxrt_common.anadig_pll + pmu_ldo_lpsr_dig) |= 1u << 2u;
+	_imxrt_waitus(1000);
+}
+
+
 static void _imxrt_pmuEnablePllLdo(void)
 {
 	u32 val;
@@ -451,33 +536,20 @@ static void _imxrt_pmuEnablePllLdo(void)
 	/* Toggle ldo PLL AI */
 	*(imxrt_common.anadig_pll + pmu_ldo_pll) ^= 1uL << 16u;
 
-	/* Busy wait ~3us */
-	for (unsigned i = 0; i < 0x10000u; i++) {
-		asm volatile("nop");
-	}
+	_imxrt_waitus(30);
 
 	/* Enable Voltage Reference for PLLs before those PLLs were enabled */
 	*(imxrt_common.anadig_pll + pmu_ref_ctrl) = 1u << 4u;
 }
 
 
-void _imxrt_initArmPll(u8 loopDivider, u8 postDivider)
+static int _imxrt_initArmPll(u8 loopDivider, u8 postDivider)
 {
-	u32 m7clkroot, reg;
+	u32 reg;
 
-	if ((loopDivider <= 104u) || (208u <= loopDivider)) {
-		return;
+	if ((loopDivider < 104u) || (208u < loopDivider)) {
+		return -1;
 	}
-
-	/* Save current M7 clock root */
-	m7clkroot = *(imxrt_common.ccm + 0x20u * clkroot_m7);
-
-	/* Temporarily switch M7 clock trusted clock source if not already */
-	if (((m7clkroot >> 8u) & 0xffu) != mux_clkroot_m7_oscrc400m) {
-		_imxrt_setRootClock(clkroot_m7, mux_clkroot_m7_oscrc400m, 1, 0);
-	}
-
-	_imxrt_pmuEnablePllLdo();
 
 	reg = *(imxrt_common.anadig_pll + arm_pll_ctrl) & ~(1uL << 29u);
 
@@ -498,6 +570,8 @@ void _imxrt_initArmPll(u8 loopDivider, u8 postDivider)
 	hal_cpuDataMemoryBarrier();
 	hal_cpuInstrBarrier();
 
+	_imxrt_waitus(30);
+
 	/* Wait for stable PLL */
 	while ((*(imxrt_common.anadig_pll + arm_pll_ctrl) & (1uL << 29u)) == 0u) {
 	}
@@ -510,12 +584,122 @@ void _imxrt_initArmPll(u8 loopDivider, u8 postDivider)
 
 	*(imxrt_common.anadig_pll + arm_pll_ctrl) = reg;
 
-	/* Restore previous M7 clock mux */
-	*(imxrt_common.ccm + 0x20u * clkroot_m7) = m7clkroot;
+	return 0;
 }
 
 
-void _imxrt_initClockTree(void)
+static void _imxrt_initSysPll3(void)
+{
+	u32 reg;
+
+	/* check if configuration is the same, then only enable clock */
+	if ((*(imxrt_common.anadig_pll + sys_pll3_ctrl) & (1uL << 21u)) != 0u) {
+		/* if clock disable -> enable it */
+		if ((*(imxrt_common.anadig_pll + sys_pll3_ctrl) & (1uL << 13u)) == 0u) {
+			*(imxrt_common.anadig_pll + sys_pll3_ctrl) |= (1uL << 13u);
+		}
+
+		/* if clock is gated -> ungate */
+		if ((*(imxrt_common.anadig_pll + sys_pll3_ctrl) & (1uL << 30u)) != 0u) {
+			*(imxrt_common.anadig_pll + sys_pll3_ctrl) &= ~(1uL << 30u);
+		}
+
+		return;
+	}
+
+	/* Gate all PFDs */
+	*(imxrt_common.anadig_pll + sys_pll3_pfd) |= (1uL << 31u) | (1uL << 23u) | (1uL << 15u) | (1uL << 7u);
+
+	/* Enable, but gate clock */
+	reg = (1u << 4u) | (1uL << 30u);
+	*(imxrt_common.anadig_pll + sys_pll3_pfd) = reg;
+
+	_imxrt_waitus(30);
+
+	/* Power off and hold ring off */
+	reg |= (1uL << 21u) | (1uL << 11u);
+	*(imxrt_common.anadig_pll + sys_pll3_pfd) = reg;
+
+	_imxrt_waitus(30);
+
+	/* Deassert hold ring off */
+	reg &= ~(1uL << 11u);
+	*(imxrt_common.anadig_pll + sys_pll3_pfd) = reg;
+
+	/* Wait for stable PLL */
+	while ((*(imxrt_common.anadig_pll + sys_pll3_ctrl) & (1uL << 29u)) == 0u) {
+	}
+
+	/* Enable system pll3 and div2 clocks */
+	reg |= (1uL << 13u) | (1uL << 3u);
+
+	/* un-gate sys pll3 */
+	reg &= ~(1uL << 30u);
+	*(imxrt_common.anadig_pll + sys_pll3_pfd) = reg;
+}
+
+
+int _imxrt_setPfdPllFracClock(u8 pfd, u8 clk_pll, u8 frac)
+{
+	volatile u32 *ctrl;
+	volatile u32 *update;
+	volatile u32 stable;
+	u32 fracval;
+	u8 gatedpfd;
+
+	if ((frac < 12u) || (35u < frac)) {
+		return -1;
+	}
+
+	switch (clk_pll) {
+		case clk_pllsys2:
+			ctrl = imxrt_common.anadig_pll + sys_pll2_pfd;
+			update = imxrt_common.anadig_pll + sys_pll2_update;
+			break;
+
+		case clk_pllsys3:
+			ctrl = imxrt_common.anadig_pll + sys_pll3_pfd;
+			update = imxrt_common.anadig_pll + sys_pll3_update;
+			break;
+
+		default:
+			return -1;
+	}
+
+	fracval = ((*ctrl) & (0x3fuL << (8u * pfd))) >> (8u * pfd);
+	gatedpfd = ((*ctrl) & (0x80uL << (8u * pfd))) >> (8u * pfd);
+
+	if ((fracval == (u32)frac) && (gatedpfd == 0u)) {
+		return 0;
+	}
+
+	stable = *ctrl & (0x40uL << (8u * pfd));
+	*ctrl |= 0x80uL << (8u * pfd);
+
+	*ctrl &= ~(0x3fuL << (8u * pfd));
+	*ctrl |= (u32)(frac & 0x3fuL) << (8u * pfd);
+
+	*update ^= 2uL << pfd;
+	*ctrl &= ~(0x80uL << (8u * pfd));
+
+	while ((*ctrl & (0x40uL << (8u * pfd))) == stable) {
+	}
+
+	return 0;
+}
+
+
+void _imxrt_deinitSysPll1(void)
+{
+	/* Disable PLL1 and div2, div5 */
+	*(imxrt_common.anadig_pll + sys_pll1_ctrl) &= ~((1uL << 26u) | (1uL << 25u) | (1uL << 13u));
+
+	/* Gate PLL1 */
+	*(imxrt_common.anadig_pll + sys_pll1_ctrl) |= 1uL << 14u;
+}
+
+
+static void _imxrt_initClockTree(void)
 {
 	static const struct {
 		u8 root;
@@ -523,7 +707,7 @@ void _imxrt_initClockTree(void)
 		u8 div;
 		u8 clkoff;
 	} clktree[] = {
-		{ clkroot_m7, mux_clkroot_m7_armpllout, 1, 0 },
+		{ clkroot_m7, mux_clkroot_m7_armpllout, 2, 0 },
 		/* { clkroot_m4, 1, mux_clkroot_m4_syspll3pfd3, 0 }, */
 		{ clkroot_bus, mux_clkroot_bus_syspll3out, 2, 0 },
 		{ clkroot_bus_lpsr, mux_clkroot_bus_lpsr_syspll3out, 3, 0 },
@@ -548,8 +732,8 @@ void _imxrt_initClockTree(void)
 		{ clkroot_can1, mux_clkroot_can1_oscrc48mdiv2, 1, 0 },
 		{ clkroot_can2, mux_clkroot_can2_oscrc48mdiv2, 1, 0 },
 		{ clkroot_can3, mux_clkroot_can3_oscrc48mdiv2, 1, 0 },
-		{ clkroot_lpuart1, mux_clkroot_lpuart1_syspll2out, 2, 0 },
-		{ clkroot_lpuart2, mux_clkroot_lpuart2_syspll2out, 2, 0 },
+		{ clkroot_lpuart1, mux_clkroot_lpuart1_oscrc48mdiv2, 2, 0 },
+		{ clkroot_lpuart2, mux_clkroot_lpuart2_oscrc48mdiv2, 2, 0 },
 		{ clkroot_lpuart3, mux_clkroot_lpuart3_oscrc48mdiv2, 1, 0 },
 		{ clkroot_lpuart4, mux_clkroot_lpuart4_oscrc48mdiv2, 1, 0 },
 		{ clkroot_lpuart5, mux_clkroot_lpuart5_oscrc48mdiv2, 1, 0 },
@@ -607,6 +791,81 @@ void _imxrt_initClockTree(void)
 	for (unsigned n = 0; n < sizeof(clktree) / sizeof(clktree[0]); n++) {
 		_imxrt_setRootClock(clktree[n].root, clktree[n].mux, clktree[n].div, clktree[n].clkoff);
 	}
+}
+
+
+static void _imxrt_initClocks(void)
+{
+	/* _imxrt_pmuBypassAnaLdo(); */
+	/* _imxrt_pmuBypassDigLdo(); */
+
+	/* Initialize 16 MHz RC osc */
+	*(imxrt_common.anadig_pll + osc_16m_ctrl) |= 1u << 1u;
+
+	/* Init 400 MHz RC osc */
+	*(imxrt_common.anadig_pll + osc_400m_ctrl1) &= ~1u;
+	*(imxrt_common.anadig_pll + osc_400m_ctrl2) |= 1u;
+	*(imxrt_common.anadig_pll + osc_400m_ctrl1) |= 1u << 1u;
+
+	/* Init 48 MHz RC osc */
+	*(imxrt_common.anadig_pll + osc_48m_ctrl) |= 1u << 1u;
+
+	/* Enables 24MHz clock source from 48MHz RC osc */
+	*(imxrt_common.anadig_pll + osc_48m_ctrl) |= 1uL << 24u;
+
+	/* Configure 24 MHz RC osc */
+	*(imxrt_common.anadig_pll + osc_24m_ctrl) |= (1u << 4u) | (1u << 2u);
+	hal_cpuDataSyncBarrier();
+
+	while ((*(imxrt_common.anadig_pll + osc_24m_ctrl) & (1uL << 30u)) == 0u) {
+	}
+
+	/* Make sure main clocks are not using ARM PLL, PLL1, PLL2, PLL3 */
+	_imxrt_setRootClock(clkroot_m7, mux_clkroot_m7_oscrc400m, 1, 0);
+	_imxrt_setRootClock(clkroot_m7_systick, mux_clkroot_m7_oscrc48mdiv2, 240, 0);
+	_imxrt_setRootClock(clkroot_bus_lpsr, mux_clkroot_m7_oscrc48mdiv2, 1, 0);
+	/* _imxrt_setRootClock(clkroot_m4, mux_clkroot_m7_oscrc48mdiv2, 1, 0); */
+
+	/* Power up ARM PLL, PLL3 slices */
+	_imxrt_pmuEnablePllLdo();
+
+#ifndef PLATFORM_INDUSTRIAL
+	/* commercial-qualified devices up to 1GHz */
+
+	/* Initialize ARM PLL to 996 MHz */
+	_imxrt_initArmPll(166, 0);
+	imxrt_common.cpuclk = 996000000u;
+#else
+	/* industrial-qualified devices up to 800MHz */
+
+	/* Initialize ARM PLL to 798 MHz */
+	_imxrt_initArmPll(133, 0);
+	imxrt_common.cpuclk = 798000000u;
+#endif
+
+	_imxrt_setPllBypass(clk_pllsys1, 1);
+
+	/* Deinit 1Gig ethernet PLL */
+	_imxrt_deinitSysPll1();
+
+	/* Init PLL2 fixed 528 MHz */
+	/* _imxrt_initSysPll2(); */
+
+	_imxrt_setPfdPllFracClock(0, clk_pllsys2, 27);
+	_imxrt_setPfdPllFracClock(1, clk_pllsys2, 16);
+	_imxrt_setPfdPllFracClock(2, clk_pllsys2, 24);
+	_imxrt_setPfdPllFracClock(3, clk_pllsys2, 32);
+
+	/* Init PLL3 fixed 480MHz */
+	_imxrt_initSysPll3();
+
+	_imxrt_setPfdPllFracClock(0, clk_pllsys3, 13);
+	_imxrt_setPfdPllFracClock(1, clk_pllsys3, 17);
+	_imxrt_setPfdPllFracClock(2, clk_pllsys3, 32);
+	_imxrt_setPfdPllFracClock(3, clk_pllsys3, 22);
+
+	/* Module clock root configurations */
+	_imxrt_initClockTree();
 }
 
 
@@ -699,43 +958,9 @@ void _imxrt_init(void)
 	imxrt_common.gpio[11] = (void *)0x40c70000;
 	imxrt_common.gpio[12] = (void *)0x40ca0000;
 
-	imxrt_common.cpuclk = 640000000;
-
 	imxrt_common.cm4state = (*(imxrt_common.src + src_scr) & 1u);
 
-	/* Initialize 16 MHz RC osc */
-	*(imxrt_common.anadig_pll + osc_16m_ctrl) |= 1u << 1u;
-
-	/* Init 400 MHz RC osc */
-	/* _imxrt_initRcOsc400M(); */
-	*(imxrt_common.anadig_pll + osc_400m_ctrl1) |= 1u;
-	*(imxrt_common.anadig_pll + osc_400m_ctrl1) |= 1u << 1u;
-
-	/* Init 48 MHz RC osc */
-	*(imxrt_common.anadig_pll + osc_48m_ctrl) |= 1u << 1u;
-
-	/* Enables 24MHz clock source from 48MHz RCOSC */
-	*(imxrt_common.anadig_pll + osc_48m_ctrl) |= 1uL << 24u;
-
-	/* Configure 24 MHz RCOSC */
-	*(imxrt_common.anadig_pll + osc_24m_ctrl) |= (1u << 4u) | (1u << 2u);
-	/* while ((*(imxrt_common.anadig_pll + osc_24m_ctrl) & (1uL << 30u)) == 0u) { */
-	/* } */
-
-#ifndef PLATFORM_INDUSTRIAL
-	/* commercial-qualified devices op to 1GHz */
-
-	/* Initialize ARM PLL to 996 MHz */
-	_imxrt_initArmPll(166, 0);
-#else
-	/* industrial-qualified devices op to 800MHz */
-
-	/* Initialize ARM PLL to 798 MHz */
-	_imxrt_initArmPll(133, 0);
-#endif
-
-	/* Module clock root configurations */
-	_imxrt_initClockTree();
+	_imxrt_initClocks();
 
 	/* Disable watchdogs */
 	if (*(imxrt_common.wdog1 + wdog_wcr) & (1 << 2))

@@ -55,19 +55,22 @@ static void *flexspi_getBase(int instance)
 
 __attribute__((section(".noxip"))) static void flexspi_clockConfig(flexspi_t *fspi)
 {
-	int gate, clk, div, mux, mfd, mfn, state;
+	int gate, root, clk, div, mux, mfd, mfn, state;
 
 	switch (fspi->instance) {
 		case flexspi_instance1:
+			/* Select main clock: SYS_PLL2_CLK = 528 MHz */
+			root = clkroot_flexspi1;
+			mux = mux_clkroot_flexspi1_syspll2out;
 			clk = pctl_clk_flexspi1;
 			gate = pctl_lpcg_flexspi1;
 			div = 3; /* SYS_PLL2_CLK / (3 + 1) => 132 MHz */
-			mux = 5; /* Select main clock: SYS_PLL2_CLK = 528 MHz */
 			mfd = 0;
 			mfn = 0;
 			break;
 
 		case flexspi_instance2:
+			root = clkroot_flexspi2;
 			clk = pctl_clk_flexspi2;
 			gate = pctl_lpcg_flexspi2;
 			/* Copy defaults */
@@ -79,6 +82,7 @@ __attribute__((section(".noxip"))) static void flexspi_clockConfig(flexspi_t *fs
 	}
 
 	_imxrt_setDirectLPCG(gate, 0);
+	_imxrt_setRootClock(root, mux, 1, 0);
 	/* clkmhz = MHZ(mux) / (div + 1) * mfn / (mfd + 1) */
 	_imxrt_setDevClock(clk, div, mux, mfd, mfn, 1);
 	_imxrt_setDirectLPCG(gate, 1);

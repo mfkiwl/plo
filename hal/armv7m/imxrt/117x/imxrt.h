@@ -650,6 +650,11 @@ enum { mux_clkroot_cko1_oscrc48mdiv2 = 0, mux_clkroot_cko1_osc24mout, mux_clkroo
 enum { mux_clkroot_cko2_oscrc48mdiv2 = 0, mux_clkroot_cko2_osc24mout, mux_clkroot_cko2_oscrc400m, mux_clkroot_cko2_oscrc16m,
 	mux_clkroot_cko2_syspll2pfd3, mux_clkroot_cko2_oscrc48m, mux_clkroot_cko2_syspll3pfd1, mux_clkroot_cko2_audiopllout };
 
+
+/* PLL clock source */
+enum { clk_pllarm = 0, clk_pllsys1, clk_pllsys2, clk_pllsys3, clk_pllaudio, clk_pllvideo };
+
+
 /* clang-format on */
 
 
@@ -683,10 +688,10 @@ extern int _imxrt_getDevClock(int clock, int *div, int *mux, int *mfd, int *mfn,
 extern int _imxrt_setDevClock(int clock, int div, int mux, int mfd, int mfn, int state);
 
 
-extern void _imxrt_initArmPll(u8 loopDivider, u8 postDivider);
-
-
 extern void _imxrt_setRootClock(u8 root, u8 mux, u8 div, u8 clockoff);
+
+
+extern int _imxrt_setPfdPllFracClock(u8 pfd, u8 clk_pll, u8 frac);
 
 
 extern void _imxrt_init(void);
