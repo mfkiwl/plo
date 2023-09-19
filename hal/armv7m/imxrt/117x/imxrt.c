@@ -42,7 +42,11 @@ enum { rtwdog_cs = 0, rtwdog_cnt, rtwdog_total, rtwdog_win };
 
 
 /* ANADIG & ANATOP complex */
-enum { arm_pll_ctrl = 0x80, sys_pll3_ctrl = 0x84, sys_pll3_update= 0x88, sys_pll3_pfd = 0x8c,
+enum {
+	/* OSC */
+	osc_48m_ctrl = 0x04, osc_24m_ctrl, osc_400m_ctrl0 = 0x10, osc_400m_ctrl1, osc_400m_ctrl2, osc_16m_ctrl = 0x30,
+	/* PLL */
+	arm_pll_ctrl = 0x80, sys_pll3_ctrl = 0x84, sys_pll3_update= 0x88, sys_pll3_pfd = 0x8c,
 	sys_pll2_ctrl = 0x90, sys_pll2_update = 0x94, sys_pll2_ss = 0x98, sys_pll2_pfd = 0x9c,
 	sys_pll2_mfd = 0xa8, sys_pll1_ss = 0xac, sys_pll1_ctrl = 0xb0, sys_pll1_denominator = 0xb4,
 	sys_pll1_numerator = 0xb8, sys_pll1_div_select = 0xbc, pll_audio_ctrl = 0xc0, pll_audio_ss = 0xc4,
@@ -699,8 +703,36 @@ void _imxrt_init(void)
 
 	imxrt_common.cm4state = (*(imxrt_common.src + src_scr) & 1u);
 
+	/* Initialize 16 MHz RC osc */
+	*(imxrt_common.anadig_pll + osc_16m_ctrl) |= 1u << 1u;
+
+	/* Init 400 MHz RC osc */
+	/* _imxrt_initRcOsc400M(); */
+	*(imxrt_common.anadig_pll + osc_400m_ctrl1) |= 1u;
+	*(imxrt_common.anadig_pll + osc_400m_ctrl1) |= 1u << 1u;
+
+	/* Init 48 MHz RC osc */
+	*(imxrt_common.anadig_pll + osc_48m_ctrl) |= 1u << 1u;
+
+	/* Enables 24MHz clock source from 48MHz RCOSC */
+	*(imxrt_common.anadig_pll + osc_48m_ctrl) |= 1uL << 24u;
+
+	/* Configure 24 MHz RCOSC */
+	*(imxrt_common.anadig_pll + osc_24m_ctrl) |= (1u << 4u) | (1u << 2u);
+	/* while ((*(imxrt_common.anadig_pll + osc_24m_ctrl) & (1uL << 30u)) == 0u) { */
+	/* } */
+
+#ifndef PLATFORM_INDUSTRIAL
+	/* commercial-qualified devices op to 1GHz */
+
 	/* Initialize ARM PLL to 996 MHz */
 	_imxrt_initArmPll(166, 0);
+#else
+	/* industrial-qualified devices op to 800MHz */
+
+	/* Initialize ARM PLL to 798 MHz */
+	_imxrt_initArmPll(133, 0);
+#endif
 
 	/* Module clock root configurations */
 	_imxrt_initClockTree();
