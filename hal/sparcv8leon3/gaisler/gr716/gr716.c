@@ -102,10 +102,10 @@ enum {
 static struct {
 	vu32 *grgpreg_base;
 	vu32 *pll_base;
-	vu32 *cgu_base0;
+	vu32 *cgu_base;
 	vu32 *cgu_base1;
 	vu32 *mctrl0_base;
-} gr716_common;
+} gr712rc_common;
 
 
 /* Set system clock divisor */
@@ -113,32 +113,32 @@ static void _gr716_setSysClk(u32 freq)
 {
 	u8 div = PLL_FREQ / freq;
 	u8 duty = div / 2;
-	*(gr716_common.pll_base + sys_ref) = (duty << PLL_DUTY_SHFT) |
+	*(gr712rc_common.pll_base + sys_ref) = (duty << PLL_DUTY_SHFT) |
 		(PLL_SEL << PLL_SEL_SHFT) | div;
 }
 
 
 static void _gr716_pllSetDefault(void)
 {
-	*(gr716_common.pll_base + sys_sel) = 0x0;
+	*(gr712rc_common.pll_base + sys_sel) = 0x0;
 
 	/* Set PLL multiplier to 20 (for 20 MHz input freq) */
-	*(gr716_common.pll_base + pll_cfg) = PLL_MUL;
+	*(gr712rc_common.pll_base + pll_cfg) = PLL_MUL;
 
 	/* Use SYS_CLK pin for source */
-	*(gr716_common.pll_base + pll_ref) = 0;
+	*(gr712rc_common.pll_base + pll_ref) = 0;
 
 	_gr716_setSysClk(SYSCLK_FREQ);
 
 	/* Select new system clock source */
-	*(gr716_common.pll_base + sys_sel) = 0x1;
+	*(gr712rc_common.pll_base + sys_sel) = 0x1;
 
 	/* Wait for PLL to lock */
-	while ((*(gr716_common.pll_base + pll_sts) & 0x1) == 0) { }
+	while ((*(gr712rc_common.pll_base + pll_sts) & 0x1) == 0) { }
 }
 
 
-int _gr716_iomuxCfg(iomux_cfg_t *ioCfg)
+int gaisler_iomuxCfg(iomux_cfg_t *ioCfg)
 {
 	vu32 oldCfg;
 
@@ -146,19 +146,19 @@ int _gr716_iomuxCfg(iomux_cfg_t *ioCfg)
 		return -1;
 	}
 
-	oldCfg = *(gr716_common.grgpreg_base + cfg_gp0 + (ioCfg->pin / 8));
+	oldCfg = *(gr712rc_common.grgpreg_base + cfg_gp0 + (ioCfg->pin / 8));
 
-	*(gr716_common.grgpreg_base + cfg_gp0 + (ioCfg->pin / 8)) =
+	*(gr712rc_common.grgpreg_base + cfg_gp0 + (ioCfg->pin / 8)) =
 		(oldCfg & ~(0xf << ((ioCfg->pin % 8) << 2))) | (ioCfg->opt << ((ioCfg->pin % 8) << 2));
 
-	oldCfg = *(gr716_common.grgpreg_base + cfg_pullup0 + (ioCfg->pin / 32));
+	oldCfg = *(gr712rc_common.grgpreg_base + cfg_pullup0 + (ioCfg->pin / 32));
 
-	*(gr716_common.grgpreg_base + cfg_pullup0 + (ioCfg->pin / 32)) =
+	*(gr712rc_common.grgpreg_base + cfg_pullup0 + (ioCfg->pin / 32)) =
 		(oldCfg & ~(1 << (ioCfg->pin % 32))) | (ioCfg->pullup << (ioCfg->pin % 32));
 
-	oldCfg = *(gr716_common.grgpreg_base + cfg_pulldn0 + (ioCfg->pin / 32));
+	oldCfg = *(gr712rc_common.grgpreg_base + cfg_pulldn0 + (ioCfg->pin / 32));
 
-	*(gr716_common.grgpreg_base + cfg_pulldn0 + (ioCfg->pin / 32)) =
+	*(gr712rc_common.grgpreg_base + cfg_pulldn0 + (ioCfg->pin / 32)) =
 		(oldCfg & ~(1 << (ioCfg->pin % 32))) | (ioCfg->pulldn << (ioCfg->pin % 32));
 
 	return 0;
@@ -168,7 +168,7 @@ int _gr716_iomuxCfg(iomux_cfg_t *ioCfg)
 
 void _gr716_cguClkEnable(u32 cgu, u32 device)
 {
-	vu32 *cguBase = (cgu == cgu_primary) ? gr716_common.cgu_base0 : gr716_common.cgu_base1;
+	vu32 *cguBase = (cgu == cgu_primary) ? gr712rc_common.cgu_base : gr712rc_common.cgu_base1;
 	u32 msk = 1 << device;
 
 	*(cguBase + cgu_unlock) |= msk;
@@ -183,7 +183,7 @@ void _gr716_cguClkEnable(u32 cgu, u32 device)
 
 void _gr716_cguClkDisable(u32 cgu, u32 device)
 {
-	vu32 *cguBase = (cgu == cgu_primary) ? gr716_common.cgu_base0 : gr716_common.cgu_base1;
+	vu32 *cguBase = (cgu == cgu_primary) ? gr712rc_common.cgu_base : gr712rc_common.cgu_base1;
 	u32 msk = 1 << device;
 
 	*(cguBase + cgu_unlock) |= msk;
@@ -194,7 +194,7 @@ void _gr716_cguClkDisable(u32 cgu, u32 device)
 
 int _gr716_cguClkStatus(u32 cgu, u32 device)
 {
-	vu32 *cguBase = (cgu == cgu_primary) ? gr716_common.cgu_base0 : gr716_common.cgu_base1;
+	vu32 *cguBase = (cgu == cgu_primary) ? gr712rc_common.cgu_base : gr712rc_common.cgu_base1;
 	u32 msk = 1 << device;
 
 	return (*(cguBase + cgu_clk_en) & msk) ? 1 : 0;
@@ -203,11 +203,11 @@ int _gr716_cguClkStatus(u32 cgu, u32 device)
 
 void _gr716_init(void)
 {
-	gr716_common.grgpreg_base = GRGPREG_BASE;
-	gr716_common.pll_base = PLL_BASE;
-	gr716_common.cgu_base0 = CGU_BASE0;
-	gr716_common.cgu_base1 = CGU_BASE1;
-	gr716_common.mctrl0_base = MCTRL0_BASE;
+	gr712rc_common.grgpreg_base = GRGPREG_BASE;
+	gr712rc_common.pll_base = PLL_BASE;
+	gr712rc_common.cgu_base = CGU_BASE0;
+	gr712rc_common.cgu_base1 = CGU_BASE1;
+	gr712rc_common.mctrl0_base = MCTRL0_BASE;
 
 	_gr716_pllSetDefault();
 }
