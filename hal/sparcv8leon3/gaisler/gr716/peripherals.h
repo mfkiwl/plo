@@ -20,12 +20,13 @@
 
 /* GPIO */
 
-#define GRGPIO0_BASE ((void *)0x8030C000)
-#define GRGPIO1_BASE ((void *)0x8030D000)
+#define GRGPIO0_BASE ((void *)0x80000900)
+#define GRGPIO1_BASE ((void *)0x80000A00)
 
 /* Interrupts */
 
-#define INT_CTRL_BASE ((void *)0x80002000)
+#define INT_CTRL_BASE ((void *)0x80000200)
+#define EXTENDED_IRQN 1
 
 /* Timers */
 

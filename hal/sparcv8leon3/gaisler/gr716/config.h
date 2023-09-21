@@ -19,10 +19,10 @@
 
 #ifndef __ASSEMBLY__
 
+#include "../types.h"
 #include "gr716.h"
 #include "peripherals.h"
 #include "../gaisler.h"
-#include "../types.h"
 #include "../../cpu.h"
 
 #include <phoenix/arch/syspage-sparcv8leon3.h>

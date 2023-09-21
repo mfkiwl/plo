@@ -17,7 +17,7 @@
 #define _GAISLER_H_
 
 
-#include <hal/hal.h>
+#include "types.h"
 
 
 typedef struct {

@@ -29,6 +29,23 @@ enum { cgudev_eth = 0, cgudev_spw0, cgudev_spw1, cgudev_spw2, cgudev_spw3, cgude
 /* clang-format on */
 
 
+static inline void hal_cpuHalt(void)
+{
+	/* GR712RC errata 1.7.8 */
+	u32 addr = 0xFFFFFFF0U;
+
+	/* clang-format off */
+
+	__asm__ volatile(
+		"wr %%g0, %%asr19\n\t"
+		"ld [%0], %%g0\n\t"
+		:
+		: "r"(addr)
+	);
+	/* clang-format on */
+}
+
+
 void _gr712rc_cguClkEnable(u32 device);
 
 

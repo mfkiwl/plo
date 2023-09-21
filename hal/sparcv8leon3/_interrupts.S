@@ -99,7 +99,11 @@ wovfl_done:
 	mov %l3, %o0
 
 	/* Disable traps, we can't let a trap use the free stack space */
+#ifndef __CPU_GR712RC
 	pwr 0, %psr
+#else
+	wr %l0, PSR_ET, %psr
+#endif
 	nop
 	nop
 	nop

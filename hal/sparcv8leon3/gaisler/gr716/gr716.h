@@ -16,7 +16,6 @@
 #ifndef _GR716_H_
 #define _GR716_H_
 
-#include "../gaisler.h"
 #include "../types.h"
 
 /* clang-format off */
@@ -38,6 +37,13 @@ cgudev_grspw, cgudev_grdac0, cgudev_grdac1, cgudev_grdac2, cgudev_grdac3, cgudev
 cgudev_gradc3, cgudev_gradc4, cgudev_gradc5, cgudev_gradc6, cgudev_gradc7, cgudev_gpioseq0, cgudev_gpioseq1 };
 
 /* clang-format on */
+
+
+static inline void hal_cpuHalt(void)
+{
+	/* must be performed in supervisor mode with int enabled */
+	__asm__ volatile("wr %g0, %asr19");
+}
 
 
 void _gr716_cguClkEnable(u32 cgu, u32 device);

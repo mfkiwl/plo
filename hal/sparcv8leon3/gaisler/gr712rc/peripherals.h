@@ -21,13 +21,14 @@
 
 /* Interrupts */
 
-#define INT_CTRL_BASE ((void *)0x80002000)
+#define INT_CTRL_BASE ((void *)0x80000200)
+#define EXTENDED_IRQN 12
 
 /* Timers */
 
 #define TIMER0_CNT    4
 #define TIMER1_CNT    2
-#define TIMER_IRQ     9
+#define TIMER_IRQ     7
 #define GPTIMER0_BASE ((void *)0x80000300)
 #define GPTIMER1_BASE ((void *)0x80100600)
 

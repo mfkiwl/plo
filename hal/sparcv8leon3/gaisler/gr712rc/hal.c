@@ -190,3 +190,10 @@ int hal_cpuJump(void)
 
 	return 0;
 }
+
+
+void hal_cpuReboot(void)
+{
+
+	__builtin_unreachable();
+}

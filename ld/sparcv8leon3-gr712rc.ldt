@@ -25,21 +25,17 @@
 /* Memory map setup */
 MEMORY
 {
-	m_bootprom      : ORIGIN = 0x00000000, LENGTH = 4K
-	m_extprom       : ORIGIN = 0x01000000, LENGTH = 16M
-	m_spi0          : ORIGIN = 0x02000000, LENGTH = 32M
-	m_spi1          : ORIGIN = 0x04000000, LENGTH = 32M
-	m_dram          : ORIGIN = 0x30000000, LENGTH = 64K
-	m_iocram        : ORIGIN = 0x31000000, LENGTH = 128K
-	m_sram          : ORIGIN = 0x40000000, LENGTH = 2M
+	m_prom    (rx)  : ORIGIN = 0x00000000, LENGTH = 64M
+	m_sram    (rwx) : ORIGIN = 0x40000000, LENGTH = 128M
+	m_ocram   (rwx) : ORIGIN = 0xA0000000, LENGTH = 192K
 }
 
-REGION_ALIAS("PLO_IMAGE", m_sram)
-REGION_ALIAS("RODATA", m_sram)
-REGION_ALIAS("DATA", m_sram)
-REGION_ALIAS("BSS", m_sram)
-REGION_ALIAS("HEAP", m_sram)
-REGION_ALIAS("STACK", m_sram)
+REGION_ALIAS("PLO_IMAGE", m_ocram)
+REGION_ALIAS("RODATA", m_ocram)
+REGION_ALIAS("DATA", m_ocram)
+REGION_ALIAS("BSS", m_ocram)
+REGION_ALIAS("HEAP", m_ocram)
+REGION_ALIAS("STACK", m_ocram)
 
 #include "common/plo-sparc.lds"
 

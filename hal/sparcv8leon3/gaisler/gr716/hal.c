@@ -16,6 +16,10 @@
 #include <hal/hal.h>
 
 
+#define BOOTSTRAP_ADDR 0x80008000
+#define BOOTSTRAP_SPIM 0x400BC003
+
+
 static struct {
 	hal_syspage_t *hs;
 	addr_t entry;
@@ -190,4 +194,24 @@ int hal_cpuJump(void)
 		:);
 
 	return 0;
+}
+
+
+void hal_cpuReboot(void)
+{
+	/* Reset to the built-in bootloader */
+	hal_interruptsDisableAll();
+
+	/* Reboot to SPIM */
+	*(vu32 *)(BOOTSTRAP_ADDR) = BOOTSTRAP_SPIM;
+
+	/* clang-format off */
+	__asm__ volatile (
+		"jmp %%g0\n\t"
+		"nop\n\t"
+		:::
+	);
+	/* clang-format on */
+
+	__builtin_unreachable();
 }
