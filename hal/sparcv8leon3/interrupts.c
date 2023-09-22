@@ -25,8 +25,11 @@ inline void hal_interruptsEnableAll(void)
 	/* clang-format off */
 
 	__asm__ volatile(
-		"mov 0, %%o0;"
-		"ta 0x09;"
+		"mov 0, %%o0\n\t"
+		"ta 0x09\n\t"
+#ifdef LEON3_TN_0018_FIX
+		"nop\n\t"
+#endif
 		:
 		:
 		: "%o0", "memory");
@@ -40,8 +43,11 @@ inline void hal_interruptsDisableAll(void)
 	/* clang-format off */
 
 	__asm__ volatile(
-		"mov " XSTR(PSR_PIL) ", %%o0;"
-		"ta 0x09;"
+		"mov " XSTR(PSR_PIL) ", %%o0\n\t"
+		"ta 0x09\n\t"
+#ifdef LEON3_TN_0018_FIX
+		"nop\n\t"
+#endif
 		:
 		:
 		: "%o0", "memory");

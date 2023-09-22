@@ -17,6 +17,7 @@
 
 #include <config.h>
 #include "cpu.h"
+#include "gaisler/grlib-tn-0018.h"
 
 .section ".text"
 .align 4
@@ -167,11 +168,16 @@ cwp_done:
 	save
 
 wufl_done:
+	TN_0018_WAIT_ICACHE(%l3, %l4)
+
 	/* restore %psr */
 	wr %l0, %psr
 	nop
 	nop
 	nop
+
+	TN_0018_FIX(%l3, %l4)
+
 	jmp %l1
 	rett %l2
 

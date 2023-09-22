@@ -18,6 +18,7 @@
 
 #include <config.h>
 #include "cpu.h"
+#include "gaisler/grlib-tn-0018.h"
 
 
 #define BAD_TRAP \
@@ -156,6 +157,8 @@ _start:
 .section ".text"
 .align 4
 
+/* Underflow/overflow traps never return directly to 'jmpl' instruction - no TN-0018 fix needed */
+
 /* Window underflow handler
 * on entry:
 * %psr in %l0, PC in %l1, nPC in %l2
@@ -236,6 +239,7 @@ _traps_setPil:
 	nop
 	nop
 	nop
+	/* TN-0018 fix done after 'ta' instruction */
 	jmp %l2
 	rett %l2 + 4
 .size _traps_setPil, . - _traps_setPil
